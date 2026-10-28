@@ -1,0 +1,49 @@
+
+# Logs
+*.log
+logs/
+log/
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*~
+*.swp
+*.swo
+
+# AI IDE and assistant files
+.cursor/
+.aider*
+.claude/
+.opencode/
+.agents/
+.agent/
+.ai/
+
+# Generated reports and debug output
+*.trace
+*.dump
+*.prof
+/diagnostics/
+/debug/
+/reports/
+
+# Generated documentation and temporary pages
+/generated/
+/tmp/
+/temp/
+/playground/
+/scratch/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Flutter build output
+/build/
+/.dart_tool/
+/coverage/
