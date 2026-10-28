@@ -1,13 +1,17 @@
 import 'package:dio/dio.dart';
 
 import '../config/app_config.dart';
+import 'api_log_interceptor.dart';
 
-/// Builds the future API client.
+/// Builds the Dio client used for authentication and protected requests.
 ///
-/// Phase 1 intentionally configures transport only: no requests are made and
-/// no authentication headers or interceptors are installed.
-Dio createDioClient(AppConfig config) {
-  return Dio(
+/// Transport and debug API logging are configured here. Authentication headers
+/// and refresh handling are attached as interceptors in dependency injection.
+///
+/// Pass the same [logInterceptor] when building more than one client so request
+/// numbers continue across them.
+Dio createDioClient(AppConfig config, {ApiLogInterceptor? logInterceptor}) {
+  final dio = Dio(
     BaseOptions(
       baseUrl: config.apiBaseUrl,
       connectTimeout: const Duration(seconds: 15),
@@ -17,4 +21,8 @@ Dio createDioClient(AppConfig config) {
       headers: const <String, dynamic>{'Accept': 'application/json'},
     ),
   );
+
+  dio.interceptors.add(logInterceptor ?? ApiLogInterceptor());
+
+  return dio;
 }

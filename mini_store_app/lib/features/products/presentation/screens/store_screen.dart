@@ -20,21 +20,24 @@ import '../widgets/store_search_field.dart';
 /// [createCubit] is injected by the router (and by tests) so the screen never
 /// reaches into the service locator.
 class StoreScreen extends StatelessWidget {
-  const StoreScreen({super.key, required this.createCubit});
+  const StoreScreen({super.key, required this.createCubit, this.onCartTap});
 
   final StoreCubit Function() createCubit;
+  final VoidCallback? onCartTap;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<StoreCubit>(
       create: (context) => createCubit(),
-      child: const _StoreView(),
+      child: _StoreView(onCartTap: onCartTap),
     );
   }
 }
 
 class _StoreView extends StatefulWidget {
-  const _StoreView();
+  const _StoreView({this.onCartTap});
+
+  final VoidCallback? onCartTap;
 
   @override
   State<_StoreView> createState() => _StoreViewState();
@@ -81,8 +84,11 @@ class _StoreViewState extends State<_StoreView> {
         subtitle: 'Everyday essentials',
         actions: [
           CartIconButton(
-            onPressed: () =>
-                _showPlaceholder('Cart features are coming in a later phase.'),
+            onPressed:
+                widget.onCartTap ??
+                () => _showPlaceholder(
+                  'Cart features are coming in a later phase.',
+                ),
           ),
         ],
       ),
