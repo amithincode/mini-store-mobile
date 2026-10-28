@@ -5,7 +5,7 @@ import '../../features/auth/presentation/cubit/auth_cubit.dart';
 import '../../features/auth/presentation/cubit/auth_state.dart';
 import '../../features/auth/presentation/screens/login_page.dart';
 import '../../features/auth/presentation/screens/splash_screen.dart';
-import '../../features/products/presentation/cubit/store_cubit.dart';
+import '../../features/products/presentation/cubit/product_list_cubit.dart';
 import '../shell/main_shell.dart';
 import 'go_router_refresh_stream.dart';
 
@@ -23,7 +23,7 @@ abstract final class AppRoutes {
 abstract final class AppRouter {
   static GoRouter create({
     required AuthCubit authCubit,
-    required StoreCubit Function() createStoreCubit,
+    required ProductListCubit Function() createProductListCubit,
   }) {
     return GoRouter(
       initialLocation: AppRoutes.splash,
@@ -60,7 +60,7 @@ abstract final class AppRouter {
           builder: (context, state) {
             return BlocProvider<AuthCubit>.value(
               value: authCubit,
-              child: MainShell(createStoreCubit: createStoreCubit),
+              child: MainShell(createProductListCubit: createProductListCubit),
             );
           },
         ),

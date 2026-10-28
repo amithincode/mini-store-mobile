@@ -9,10 +9,18 @@ import '../utils/product_category_label.dart';
 
 /// Compact product tile used by the responsive grid.
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.onTap});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.imageCacheWidth,
+  });
 
   final Product product;
   final VoidCallback onTap;
+
+  /// Decode width for the thumbnail, derived from the grid cell width.
+  final int? imageCacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -38,6 +46,7 @@ class ProductCard extends StatelessWidget {
                       child: AppNetworkImage(
                         imageUrl: product.imageUrl,
                         semanticLabel: product.title,
+                        memCacheWidth: imageCacheWidth,
                       ),
                     ),
                   ),

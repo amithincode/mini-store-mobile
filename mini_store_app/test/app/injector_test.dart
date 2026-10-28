@@ -14,7 +14,15 @@ import 'package:mini_store_app/features/auth/domain/repositories/session_reposit
 import 'package:mini_store_app/features/auth/domain/session/session_expiration_notifier.dart';
 import 'package:mini_store_app/features/auth/presentation/cubit/auth_cubit.dart';
 import 'package:mini_store_app/features/auth/presentation/cubit/auth_state.dart';
-import 'package:mini_store_app/features/products/presentation/cubit/store_cubit.dart';
+import 'package:mini_store_app/features/products/data/datasources/product_local_data_source.dart';
+import 'package:mini_store_app/features/products/data/datasources/product_remote_data_source.dart';
+import 'package:mini_store_app/features/products/data/repositories/product_repository_impl.dart';
+import 'package:mini_store_app/features/products/domain/repositories/product_repository.dart';
+import 'package:mini_store_app/features/products/domain/usecases/get_cached_products_use_case.dart';
+import 'package:mini_store_app/features/products/domain/usecases/get_products_use_case.dart';
+import 'package:mini_store_app/features/products/domain/usecases/search_products_use_case.dart';
+import 'package:mini_store_app/features/products/presentation/cubit/product_list_cubit.dart';
+import 'package:mini_store_app/features/products/presentation/cubit/product_list_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -29,44 +37,52 @@ void main() {
     await GetIt.instance.reset();
   });
 
-  test(
-    'registers config, storage, auth services, Dio, cubit, and router',
-    () async {
-      const config = AppConfig(apiBaseUrl: 'https://dummyjson.com');
+  test('registers config, storage, auth and product services, Dio, cubit, and '
+      'router', () async {
+    const config = AppConfig(apiBaseUrl: 'https://dummyjson.com');
 
-      await configureDependencies(config: config);
+    await configureDependencies(config: config);
 
-      expect(getIt<AppConfig>(), same(config));
-      expect(getIt<AppStorage>(), isA<AppStorage>());
-      expect(getIt<SessionRepository>(), isA<SessionRepositoryImpl>());
-      expect(getIt<AuthRemoteDataSource>(), isA<DioAuthRemoteDataSource>());
-      expect(getIt<AuthRepository>(), isA<AuthRepositoryImpl>());
-      expect(
-        getIt<SessionExpirationNotifier>(),
-        isA<SessionExpirationNotifier>(),
-      );
+    expect(getIt<AppConfig>(), same(config));
+    expect(getIt<AppStorage>(), isA<AppStorage>());
+    expect(getIt<SessionRepository>(), isA<SessionRepositoryImpl>());
+    expect(getIt<AuthRemoteDataSource>(), isA<DioAuthRemoteDataSource>());
+    expect(getIt<AuthRepository>(), isA<AuthRepositoryImpl>());
+    expect(
+      getIt<SessionExpirationNotifier>(),
+      isA<SessionExpirationNotifier>(),
+    );
 
-      final dio = getIt<Dio>();
-      expect(dio.options.baseUrl, config.apiBaseUrl);
-      expect(dio.options.headers['Accept'], 'application/json');
-      expect(dio.interceptors.whereType<AuthInterceptor>(), hasLength(1));
+    final dio = getIt<Dio>();
+    expect(dio.options.baseUrl, config.apiBaseUrl);
+    expect(dio.options.headers['Accept'], 'application/json');
+    expect(dio.interceptors.whereType<AuthInterceptor>(), hasLength(1));
 
-      final cubit = getIt<AuthCubit>();
-      expect(cubit.state, isA<AuthChecking>());
+    final cubit = getIt<AuthCubit>();
+    expect(cubit.state, isA<AuthChecking>());
 
-      final firstCubit = getIt<StoreCubit>();
-      final secondCubit = getIt<StoreCubit>();
-      expect(firstCubit, isNot(same(secondCubit)));
-      expect(firstCubit.state.products, isEmpty);
-      await firstCubit.close();
-      await secondCubit.close();
+    final firstCubit = getIt<ProductListCubit>();
+    final secondCubit = getIt<ProductListCubit>();
+    expect(firstCubit, isNot(same(secondCubit)));
+    expect(firstCubit.state, isA<ProductListInitial>());
+    await firstCubit.close();
+    await secondCubit.close();
 
-      final router = getIt<GoRouter>();
-      expect(getIt<GoRouter>(), same(router));
-      expect(router.routeInformationProvider, isNotNull);
-      router.dispose();
-    },
-  );
+    expect(
+      getIt<ProductLocalDataSource>(),
+      isA<SharedPreferencesProductLocalDataSource>(),
+    );
+    expect(getIt<ProductRemoteDataSource>(), isA<DioProductRemoteDataSource>());
+    expect(getIt<ProductRepository>(), isA<ProductRepositoryImpl>());
+    expect(getIt<GetProductsUseCase>(), isA<GetProductsUseCase>());
+    expect(getIt<SearchProductsUseCase>(), isA<SearchProductsUseCase>());
+    expect(getIt<GetCachedProductsUseCase>(), isA<GetCachedProductsUseCase>());
+
+    final router = getIt<GoRouter>();
+    expect(getIt<GoRouter>(), same(router));
+    expect(router.routeInformationProvider, isNotNull);
+    router.dispose();
+  });
 
   test('is safe to configure more than once', () async {
     const firstConfig = AppConfig(apiBaseUrl: 'https://dummyjson.com');

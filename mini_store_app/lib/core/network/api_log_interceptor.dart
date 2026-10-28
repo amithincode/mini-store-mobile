@@ -5,21 +5,22 @@ import 'package:flutter/foundation.dart';
 
 /// Prints API traffic as formatted JSON blocks with credentials redacted.
 ///
-/// It is enabled in debug builds only. Headers are never printed, and sensitive
-/// body fields are replaced before logging so tokens and passwords stay out of
-/// the console.
+/// Enabled in debug builds only. Sensitive body fields are replaced before
+/// logging so tokens and passwords stay out of the console. Output is split
+/// into 800-character chunks to work around [debugPrint]'s truncation limit.
 class ApiLogInterceptor extends Interceptor {
   ApiLogInterceptor({
     bool enabled = kDebugMode,
     void Function(String message)? logger,
     int maxBodyLength = 8000,
   }) : _enabled = enabled,
-       _logger = logger ?? debugPrint,
+       _logger = logger ?? _chunkedPrint,
        _maxBodyLength = maxBodyLength;
 
   static const String _idKey = 'mini_store.api_request_id';
   static const String _startedAtKey = 'mini_store.api_request_started_at';
   static const int _frameWidth = 72;
+  static const int _chunkSize = 800;
   static const Set<String> _sensitiveKeys = <String>{
     'password',
     'accesstoken',
@@ -34,6 +35,17 @@ class ApiLogInterceptor extends Interceptor {
   final void Function(String message) _logger;
   final int _maxBodyLength;
   int _nextId = 0;
+
+  /// Splits [message] into [_chunkSize]-character pieces so that
+  /// [debugPrint]'s ~1024-char hard limit does not silently truncate JSON.
+  static void _chunkedPrint(String message) {
+    var offset = 0;
+    while (offset < message.length) {
+      final end = (offset + _chunkSize).clamp(0, message.length);
+      debugPrint(message.substring(offset, end));
+      offset = end;
+    }
+  }
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
@@ -124,16 +136,16 @@ class ApiLogInterceptor extends Interceptor {
           '${data.fields.length} fields]';
     }
 
+    // Dio returns the already-decoded value when responseType is JSON.
+    // For string bodies, attempt a JSON parse so we always pretty-print.
     final decoded = data is String ? (_tryDecodeJson(data) ?? data) : data;
 
     try {
-      final pretty = const JsonEncoder.withIndent(
-        '  ',
-      ).convert(_redact(decoded));
+      final pretty = const JsonEncoder.withIndent('  ').convert(_redact(decoded));
 
       if (pretty.length > _maxBodyLength) {
-        return '[Body omitted: ${pretty.length} characters exceeds the '
-            '$_maxBodyLength-character log limit]';
+        return '[Body omitted: ${pretty.length} chars exceeds the '
+            '$_maxBodyLength-char log limit]';
       }
 
       return pretty;
@@ -185,3 +197,4 @@ class ApiLogInterceptor extends Interceptor {
     return '$top\n$body\n$bottom';
   }
 }
+

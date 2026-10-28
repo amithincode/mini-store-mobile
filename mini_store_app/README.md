@@ -1,8 +1,9 @@
 # Mini Store
 
 A responsive Flutter storefront for mobile, tablet, and desktop. The app starts
-on a real login screen, restores saved sessions, and opens a protected four-tab
-shell. The product catalogue is connected in a later phase.
+on a real login screen, restores saved sessions, opens a protected four-tab
+shell, and loads the DummyJSON product catalogue with search, pagination,
+cache-first rendering, and offline-aware errors.
 
 ## Requirements
 
@@ -81,6 +82,62 @@ Passwords are never persisted or logged. A corrupt, incomplete, or unknown
 schema version removes that key and is treated as signed out. Because the access
 token may have expired between launches, restoring a session does not contact the
 API; the first protected request refreshes it if needed.
+
+## Product catalogue
+
+Home uses the protected Dio client for both endpoints:
+
+```text
+GET /products?limit=10&skip=<loaded>
+GET /products/search?q=<query>&limit=10&skip=<loaded>
+```
+
+- Page size is 10. The next `skip` is the number of loaded products; pages are
+  appended, deduplicated by product id, and stop once the API `total` is reached.
+- Infinite scroll requests the next page near the bottom. Wide layouts also fill
+  the first viewport automatically when ten products do not cover the screen.
+- Pull-to-refresh resets to page zero and replaces the list. Web and desktop also
+  expose a refresh action in the app bar.
+- Next-page and refresh failures keep the visible products on screen. There is no
+  full-screen loader during either operation.
+- Search is debounced by 500 ms. Pressing Enter submits immediately, the clear
+  button resets immediately, and changing the term resets pagination. Responses
+  for an older term are ignored.
+- Empty searches show `No products found` with a clear action, which is distinct
+  from an empty catalogue.
+- Session failures (`401`/`403`) are never reported as offline.
+
+### Product cache
+
+Products are cached in `SharedPreferences`, separately per normalized query
+(trimmed, lower-cased, whitespace collapsed). Each product is stored under its
+own key, so no single value grows with the catalogue:
+
+```text
+mini_store.products.v1.schema              # cache schema, currently 1
+mini_store.products.v1.index               # most recently written queries
+mini_store.products.v1.meta.<query>        # total, limit, updatedAt, ordered ids
+mini_store.products.v1.item.<productId>    # one JSON product
+```
+
+The normal catalogue uses `__all__` as its meta key. Up to ten query caches are
+kept; evicting one removes its metadata and any product entries no longer
+referenced by another query. Cached products render immediately and are refreshed
+in the background without a hard TTL. On a failed refresh the cache is preserved
+and an inline notice explains what is being shown. The product cache survives
+logout; only the authentication session is cleared.
+
+### Error states
+
+| Condition | What Home shows |
+| --------- | --------------- |
+| Offline, no cache | Offline state with Retry |
+| Offline, cache available | Cached grid plus an offline notice |
+| Refresh failed, cache available | Cached grid plus a refresh-failed notice and Retry |
+| Search refresh failed, cache available | Cached search results plus a search notice |
+| Empty search | `No products found` and Clear search |
+| Next page failed | Inline footer error with Try again; existing products stay |
+| Expired session | Session message, no offline copy |
 
 ## Debug API logging
 
@@ -167,6 +224,13 @@ Chrome DevTools, but `flutter run` forwards it to the terminal.
 - Protected four-tab shell: Home, Categories, Cart, and Account
 - Account profile from saved data with graceful placeholders, plus confirmed
   logout
+- Product catalogue from `/products` with paginated infinite scroll and
+  pull-to-refresh
+- Debounced `/products/search` with stale-response protection, Enter to submit,
+  immediate clear, and distinct empty states
+- Chunked, per-query persistent product cache with cache-first rendering,
+  background refresh, and offline notices
+- Responsive 2/3/4/5-column lazy product grid with cached thumbnails
 - Debug API logs with redacted credentials
 - Preserved responsive storefront, shared `AppScaffold`/`AppAppBar`, bundled
   Poppins, and Material 3 theme
@@ -182,7 +246,7 @@ lib/
 ├── app/
 │   ├── app.dart                     # MaterialApp.router and DevicePreview
 │   ├── startup_error_app.dart
-│   ├── di/injector.dart             # auth services, protected Dio, router
+│   ├── di/injector.dart             # auth, product, cache, and router wiring
 │   ├── router/app_router.dart       # splash/login/protected redirects
 │   ├── router/go_router_refresh_stream.dart
 │   └── shell/main_shell.dart        # four-tab NavigationBar
@@ -199,7 +263,10 @@ lib/
     │   ├── data/                    # Dio data source, models, interceptor, storage
     │   └── presentation/            # AuthCubit, auth states, login, splash
     ├── account/presentation/        # Profile and confirmed logout
-    ├── products/                    # Store cubit, screen, and widgets
+    ├── products/
+    │   ├── domain/                  # Product, pages, failures, repository, use cases
+    │   ├── data/                    # Dio remote, chunked cache, models, error mapper
+    │   └── presentation/            # ProductListCubit, Home screen, grid, notices
     ├── categories/presentation/     # Categories placeholder
     └── cart/presentation/           # Cart placeholder
 ```
@@ -217,6 +284,17 @@ The auth feature follows Clean Architecture:
 Widgets receive dependencies through constructors and `BlocProvider`; only
 bootstrap code and tests touch the service locator.
 
+The products feature follows the same layering:
+
+- Presentation owns `ProductListCubit`, the sealed list states, and widgets.
+- Domain owns `Product`, `ProductPage`, query normalization, failures, the
+  repository contract, and catalogue/search/cache use cases.
+- Data implements the repository with an authenticated Dio data source, tolerant
+  response models, a chunked `SharedPreferences` cache, and a Dio error mapper.
+- `ProductListCubit` guards every first-page request with a generation counter
+  and drops results after `close()`, so late responses cannot update Home after
+  logout.
+
 ## Responsive behaviour
 
 | Width      | Device  | Page gutter | Product columns |
@@ -232,8 +310,9 @@ is used at every width.
 
 ## Device preview
 
-`DevicePreview` is enabled in debug and profile builds and disabled in release.
-The project pins `device_preview: 1.3.1` because 3.x requires Flutter ≥ 3.47.0.
+The bootstrap currently passes `enableDevicePreview: false`; the debug/profile
+expression is kept commented in `main.dart`. The project pins
+`device_preview: 1.3.1` because 3.x requires Flutter ≥ 3.47.0.
 
 ## Verification
 
@@ -257,6 +336,21 @@ API. It covers:
   `401`s, transient refresh failures, and expiry
 - Account profile rendering, placeholders, logout cancellation, and confirmation
 - splash restore, route protection, logout routing, and expiry redirects
+- tolerant product parsing, pagination metadata, and malformed-item skipping
+- chunked cache writes, per-query separation, append/dedupe, eviction, schema
+  mismatch, and corrupted entries
+- repository endpoint selection, query normalization, empty-search cache
+  clearing, cache-write failures, and offline cache preservation
+- cubit cache-first loading, background refresh, offline and refresh notices,
+  auth-vs-offline classification, 500 ms debounce, stale responses, immediate
+  clear, distinct empty states, pagination/dedupe/stop, retry, and post-logout
+  response suppression
+- Home responsive columns, search/clear, offline retry, refresh notices,
+  pagination loader/error, refresh action visibility, placeholders, narrow
+  text-scale layout, and capped search width
+
+Latest verification (Flutter 3.41.7 / Dart 3.11.5): `flutter analyze` reports no
+issues and `flutter test` passes all 144 tests.
 
 ## Current scope
 
@@ -265,10 +359,13 @@ Implemented:
 - Real authentication, token persistence, and automatic refresh
 - Session restore with a splash screen and protected routing
 - Four-tab shell with a working Account tab
-- Empty store shell and reusable responsive UI
+- Paginated product catalogue with infinite scroll, pull-to-refresh, and a
+  responsive lazy grid
+- Debounced API search with empty/error states and stale-response protection
+- Chunked per-query product cache with cache-first rendering and offline notices
 
 Deliberately excluded:
 
-- Product and category data, search, and pagination
+- Product details, reviews, and category filtering
 - Cart logic, checkout, and payments
-- Profile editing and dark theme
+- New authentication flows, profile editing, and dark theme

@@ -6,9 +6,16 @@ import '../../../../core/theme/app_typography.dart';
 
 /// Heading above the product grid with a live result count.
 class ProductSectionHeader extends StatelessWidget {
-  const ProductSectionHeader({super.key, required this.count});
+  const ProductSectionHeader({
+    super.key,
+    required this.count,
+    this.title = 'Popular products',
+    this.subtitle = 'Handpicked favourites for everyday living',
+  });
 
   final int count;
+  final String title;
+  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
@@ -19,10 +26,10 @@ class ProductSectionHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Popular products', style: AppTypography.titleLarge),
+              Text(title, style: AppTypography.titleLarge),
               const SizedBox(height: AppSpacing.xxs),
               Text(
-                'Handpicked favourites for everyday living',
+                subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppTypography.bodySmall,

@@ -4,8 +4,8 @@ import 'package:mini_store_app/app/app.dart';
 import 'package:mini_store_app/app/router/app_router.dart';
 import 'package:mini_store_app/features/auth/domain/entities/user.dart';
 import 'package:mini_store_app/features/auth/presentation/cubit/auth_state.dart';
-import 'package:mini_store_app/features/products/presentation/cubit/store_cubit.dart';
 
+import '../features/products/support/product_test_doubles.dart';
 import '../support/auth_test_doubles.dart';
 
 const User _accountUser = User(
@@ -30,7 +30,10 @@ Future<void> _pumpApp(
 ) async {
   final router = AppRouter.create(
     authCubit: dependencies.cubit,
-    createStoreCubit: StoreCubit.new,
+    createProductListCubit: () => createTestProductListCubit(
+      repository: FakeProductRepository(),
+      searchDebounce: Duration.zero,
+    ),
   );
   addTearDown(router.dispose);
   await tester.pumpWidget(

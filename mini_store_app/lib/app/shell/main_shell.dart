@@ -4,14 +4,14 @@ import '../../core/theme/app_colors.dart';
 import '../../features/account/presentation/screens/account_screen.dart';
 import '../../features/cart/presentation/screens/cart_screen.dart';
 import '../../features/categories/presentation/screens/categories_screen.dart';
-import '../../features/products/presentation/cubit/store_cubit.dart';
+import '../../features/products/presentation/cubit/product_list_cubit.dart';
 import '../../features/products/presentation/screens/store_screen.dart';
 
 /// Protected four-tab shell. Home keeps its existing screen and state.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, required this.createStoreCubit});
+  const MainShell({super.key, required this.createProductListCubit});
 
-  final StoreCubit Function() createStoreCubit;
+  final ProductListCubit Function() createProductListCubit;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -34,7 +34,7 @@ class _MainShellState extends State<MainShell> {
         index: _selectedIndex,
         children: [
           StoreScreen(
-            createCubit: widget.createStoreCubit,
+            createCubit: widget.createProductListCubit,
             onCartTap: () => _selectTab(2),
           ),
           const CategoriesScreen(),

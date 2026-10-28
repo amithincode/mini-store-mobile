@@ -4,19 +4,22 @@ import '../../../../core/theme/app_colors.dart';
 
 /// Store search input with a clear affordance.
 ///
-/// Filtering happens locally in the cubit; no API call is made.
+/// Search runs against the API through the product cubit; this widget only owns
+/// the text field affordances and forwards changes, submissions, and clears.
 class StoreSearchField extends StatelessWidget {
   const StoreSearchField({
     super.key,
     required this.controller,
     required this.onChanged,
     required this.onClear,
+    this.onSubmitted,
     this.maxWidth = double.infinity,
   });
 
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+  final ValueChanged<String>? onSubmitted;
   final double maxWidth;
 
   @override
@@ -28,6 +31,7 @@ class StoreSearchField extends StatelessWidget {
         child: TextField(
           controller: controller,
           onChanged: onChanged,
+          onSubmitted: onSubmitted,
           textInputAction: TextInputAction.search,
           decoration: InputDecoration(
             hintText: 'Search products, brands…',

@@ -19,7 +19,14 @@ import '../../features/auth/domain/usecases/logout_use_case.dart';
 import '../../features/auth/domain/usecases/refresh_session_use_case.dart';
 import '../../features/auth/domain/usecases/restore_session_use_case.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
-import '../../features/products/presentation/cubit/store_cubit.dart';
+import '../../features/products/data/datasources/product_local_data_source.dart';
+import '../../features/products/data/datasources/product_remote_data_source.dart';
+import '../../features/products/data/repositories/product_repository_impl.dart';
+import '../../features/products/domain/repositories/product_repository.dart';
+import '../../features/products/domain/usecases/get_cached_products_use_case.dart';
+import '../../features/products/domain/usecases/get_products_use_case.dart';
+import '../../features/products/domain/usecases/search_products_use_case.dart';
+import '../../features/products/presentation/cubit/product_list_cubit.dart';
 import '../router/app_router.dart';
 
 /// Central service locator. Only bootstrap code and tests should touch this;
@@ -27,7 +34,8 @@ import '../router/app_router.dart';
 final GetIt getIt = GetIt.instance;
 
 /// Registers config, storage, authentication, the protected API client, the
-/// store cubit, and the router. Safe to call once during bootstrap.
+/// product list dependencies, and the router. Safe to call once during
+/// bootstrap.
 Future<void> configureDependencies({required AppConfig config}) async {
   if (!getIt.isRegistered<AppConfig>()) {
     getIt.registerSingleton<AppConfig>(config);
@@ -132,15 +140,60 @@ Future<void> configureDependencies({required AppConfig config}) async {
     );
   }
 
-  if (!getIt.isRegistered<StoreCubit>()) {
-    getIt.registerFactory<StoreCubit>(() => StoreCubit());
+  if (!getIt.isRegistered<ProductLocalDataSource>()) {
+    getIt.registerLazySingleton<ProductLocalDataSource>(
+      () => SharedPreferencesProductLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+
+  if (!getIt.isRegistered<ProductRemoteDataSource>()) {
+    getIt.registerLazySingleton<ProductRemoteDataSource>(
+      () => DioProductRemoteDataSource(getIt<Dio>()),
+    );
+  }
+
+  if (!getIt.isRegistered<ProductRepository>()) {
+    getIt.registerLazySingleton<ProductRepository>(
+      () => ProductRepositoryImpl(
+        getIt<ProductRemoteDataSource>(),
+        getIt<ProductLocalDataSource>(),
+      ),
+    );
+  }
+
+  if (!getIt.isRegistered<GetProductsUseCase>()) {
+    getIt.registerLazySingleton<GetProductsUseCase>(
+      () => GetProductsUseCase(getIt<ProductRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<SearchProductsUseCase>()) {
+    getIt.registerLazySingleton<SearchProductsUseCase>(
+      () => SearchProductsUseCase(getIt<ProductRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<GetCachedProductsUseCase>()) {
+    getIt.registerLazySingleton<GetCachedProductsUseCase>(
+      () => GetCachedProductsUseCase(getIt<ProductRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<ProductListCubit>()) {
+    getIt.registerFactory<ProductListCubit>(
+      () => ProductListCubit(
+        getProducts: getIt<GetProductsUseCase>(),
+        searchProducts: getIt<SearchProductsUseCase>(),
+        getCachedProducts: getIt<GetCachedProductsUseCase>(),
+      ),
+    );
   }
 
   if (!getIt.isRegistered<GoRouter>()) {
     getIt.registerLazySingleton<GoRouter>(
       () => AppRouter.create(
         authCubit: getIt<AuthCubit>(),
-        createStoreCubit: () => getIt<StoreCubit>(),
+        createProductListCubit: () => getIt<ProductListCubit>(),
       ),
     );
   }
