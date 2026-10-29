@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mini_store_app/core/config/app_config.dart';
 import 'package:mini_store_app/features/auth/data/interceptors/auth_interceptor.dart';
 import 'package:mini_store_app/features/auth/domain/entities/refresh_result.dart';
 import 'package:mini_store_app/features/auth/domain/entities/auth_tokens.dart';
@@ -11,6 +12,17 @@ import '../../../../support/auth_test_doubles.dart';
 import '../../../../support/fake_http_adapter.dart';
 
 Future<void> _flush() => Future<void>.delayed(Duration.zero);
+
+const AppConfig _config = AppConfig(
+  apiBaseUrl: 'https://dummyjson.test',
+  authLoginPath: '/auth/login',
+  authRefreshPath: '/auth/refresh',
+  productsPath: '/products',
+  productsSearchPath: '/products/search',
+  productDetailPath: '/products/{id}',
+  categoriesPath: '/products/categories',
+  categoryProductsPath: '/products/category/{slug}',
+);
 
 class _Harness {
   _Harness({bool signedIn = true})
@@ -29,6 +41,7 @@ class _Harness {
         sessionRepository: dependencies.sessionRepository,
         refreshSession: dependencies.refreshSessionUseCase,
         expirationNotifier: dependencies.expirationNotifier,
+        config: _config,
       ),
     );
     dio.httpClientAdapter = adapter;

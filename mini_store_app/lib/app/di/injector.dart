@@ -7,6 +7,7 @@ import '../../core/config/app_config.dart';
 import '../../core/network/api_log_interceptor.dart';
 import '../../core/network/dio_client.dart';
 import '../../core/storage/app_storage.dart';
+import '../../core/theme/theme_cubit.dart';
 import '../../features/auth/data/datasources/auth_remote_data_source.dart';
 import '../../features/auth/data/interceptors/auth_interceptor.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
@@ -49,9 +50,17 @@ import '../../features/product_details/data/repositories/product_detail_reposito
 import '../../features/product_details/domain/repositories/product_detail_repository.dart';
 import '../../features/product_details/domain/usecases/get_product_detail_use_case.dart';
 import '../../features/product_details/presentation/cubit/product_detail_cubit.dart';
+import '../../features/orders/data/datasources/order_local_data_source.dart';
+import '../../features/orders/data/repositories/order_repository_impl.dart';
+import '../../features/orders/domain/repositories/order_repository.dart';
 import '../../features/orders/domain/services/order_number_generator.dart';
 import '../../features/orders/domain/usecases/place_order_use_case.dart';
 import '../../features/orders/presentation/cubit/checkout_cubit.dart';
+import '../../features/orders/presentation/cubit/order_history_cubit.dart';
+import '../../features/wishlist/data/datasources/wishlist_local_data_source.dart';
+import '../../features/wishlist/data/repositories/wishlist_repository_impl.dart';
+import '../../features/wishlist/domain/repositories/wishlist_repository.dart';
+import '../../features/wishlist/presentation/cubit/wishlist_cubit.dart';
 import '../router/app_router.dart';
 import '../shell/main_tab_controller.dart';
 
@@ -71,6 +80,13 @@ Future<void> configureDependencies({required AppConfig config}) async {
     getIt.registerSingleton<AppStorage>(await AppStorage.create());
   }
 
+  if (!getIt.isRegistered<ThemeCubit>()) {
+    getIt.registerLazySingleton<ThemeCubit>(
+      () => ThemeCubit(getIt<AppStorage>()),
+      dispose: (cubit) => cubit.close(),
+    );
+  }
+
   if (!getIt.isRegistered<SessionRepository>()) {
     getIt.registerLazySingleton<SessionRepository>(
       () => SessionRepositoryImpl(getIt<AppStorage>()),
@@ -87,7 +103,7 @@ Future<void> configureDependencies({required AppConfig config}) async {
         getIt<AppConfig>(),
         logInterceptor: getIt<ApiLogInterceptor>(),
       );
-      return DioAuthRemoteDataSource(authDio);
+      return DioAuthRemoteDataSource(authDio, getIt<AppConfig>());
     });
   }
 
@@ -143,6 +159,7 @@ Future<void> configureDependencies({required AppConfig config}) async {
           sessionRepository: getIt<SessionRepository>(),
           refreshSession: getIt<RefreshSessionUseCase>(),
           expirationNotifier: getIt<SessionExpirationNotifier>(),
+          config: getIt<AppConfig>(),
         ),
       );
       return dio;
@@ -174,7 +191,7 @@ Future<void> configureDependencies({required AppConfig config}) async {
 
   if (!getIt.isRegistered<ProductRemoteDataSource>()) {
     getIt.registerLazySingleton<ProductRemoteDataSource>(
-      () => DioProductRemoteDataSource(getIt<Dio>()),
+      () => DioProductRemoteDataSource(getIt<Dio>(), getIt<AppConfig>()),
     );
   }
 
@@ -219,7 +236,7 @@ Future<void> configureDependencies({required AppConfig config}) async {
 
   if (!getIt.isRegistered<CategoryRemoteDataSource>()) {
     getIt.registerLazySingleton<CategoryRemoteDataSource>(
-      () => DioCategoryRemoteDataSource(getIt<Dio>()),
+      () => DioCategoryRemoteDataSource(getIt<Dio>(), getIt<AppConfig>()),
     );
   }
 
@@ -301,6 +318,22 @@ Future<void> configureDependencies({required AppConfig config}) async {
       dispose: (cubit) => cubit.close(),
     );
   }
+  if (!getIt.isRegistered<WishlistLocalDataSource>()) {
+    getIt.registerLazySingleton<WishlistLocalDataSource>(
+      () => SharedPreferencesWishlistLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+  if (!getIt.isRegistered<WishlistRepository>()) {
+    getIt.registerLazySingleton<WishlistRepository>(
+      () => WishlistRepositoryImpl(getIt<WishlistLocalDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<WishlistCubit>()) {
+    getIt.registerLazySingleton<WishlistCubit>(
+      () => WishlistCubit(getIt<WishlistRepository>())..loadWishlist(),
+      dispose: (cubit) => cubit.close(),
+    );
+  }
   if (!getIt.isRegistered<ProductDetailLocalDataSource>()) {
     getIt.registerLazySingleton<ProductDetailLocalDataSource>(
       () => SharedPreferencesProductDetailLocalDataSource(getIt<AppStorage>()),
@@ -308,7 +341,7 @@ Future<void> configureDependencies({required AppConfig config}) async {
   }
   if (!getIt.isRegistered<ProductDetailRemoteDataSource>()) {
     getIt.registerLazySingleton<ProductDetailRemoteDataSource>(
-      () => DioProductDetailRemoteDataSource(getIt<Dio>()),
+      () => DioProductDetailRemoteDataSource(getIt<Dio>(), getIt<AppConfig>()),
     );
   }
   if (!getIt.isRegistered<ProductDetailRepository>()) {
@@ -352,11 +385,31 @@ Future<void> configureDependencies({required AppConfig config}) async {
     );
   }
 
+  if (!getIt.isRegistered<OrderLocalDataSource>()) {
+    getIt.registerLazySingleton<OrderLocalDataSource>(
+      () => SharedPreferencesOrderLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+
+  if (!getIt.isRegistered<OrderRepository>()) {
+    getIt.registerLazySingleton<OrderRepository>(
+      () => OrderRepositoryImpl(getIt<OrderLocalDataSource>()),
+    );
+  }
+
+  if (!getIt.isRegistered<OrderHistoryCubit>()) {
+    getIt.registerLazySingleton<OrderHistoryCubit>(
+      () => OrderHistoryCubit(getIt<OrderRepository>())..loadOrders(),
+      dispose: (cubit) => cubit.close(),
+    );
+  }
+
   if (!getIt.isRegistered<CheckoutCubit>()) {
     getIt.registerLazySingleton<CheckoutCubit>(
       () => CheckoutCubit(
         cart: getIt<CartCubit>(),
         placeOrder: getIt<PlaceOrderUseCase>(),
+        history: getIt<OrderHistoryCubit>(),
       ),
       dispose: (cubit) => cubit.close(),
     );
@@ -378,6 +431,8 @@ Future<void> configureDependencies({required AppConfig config}) async {
         createProductDetailCubit: () => getIt<ProductDetailCubit>(),
         cartCubit: getIt<CartCubit>(),
         checkoutCubit: getIt<CheckoutCubit>(),
+        wishlistCubit: getIt<WishlistCubit>(),
+        orderHistoryCubit: getIt<OrderHistoryCubit>(),
         tabController: getIt<MainTabController>(),
       ),
     );

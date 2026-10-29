@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -32,7 +32,9 @@ class ProductSectionHeader extends StatelessWidget {
                 subtitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: AppTypography.bodySmall,
+                style: AppTypography.bodySmall.copyWith(
+                  color: context.palette.textSecondary,
+                ),
               ),
             ],
           ),
@@ -44,14 +46,14 @@ class ProductSectionHeader extends StatelessWidget {
             vertical: AppSpacing.xxs + 2,
           ),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            color: context.palette.surface,
             borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: AppColors.border),
+            border: Border.all(color: context.palette.border),
           ),
           child: Text(
             '$count ${count == 1 ? 'item' : 'items'}',
             style: AppTypography.labelMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
               fontWeight: FontWeight.w600,
             ),
           ),

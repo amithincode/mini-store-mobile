@@ -8,10 +8,13 @@ import 'package:mini_store_app/features/cart/domain/failures/cart_storage_except
 import 'package:mini_store_app/features/cart/domain/repositories/cart_repository.dart';
 import 'package:mini_store_app/features/cart/presentation/cubit/cart_cubit.dart';
 import 'package:mini_store_app/features/cart/presentation/screens/cart_screen.dart';
+import 'package:mini_store_app/features/orders/domain/entities/order.dart';
+import 'package:mini_store_app/features/orders/domain/repositories/order_repository.dart';
 import 'package:mini_store_app/features/orders/domain/services/order_number_generator.dart';
 import 'package:mini_store_app/features/orders/domain/usecases/place_order_use_case.dart';
 import 'package:mini_store_app/features/orders/presentation/cubit/checkout_cubit.dart';
 import 'package:mini_store_app/features/orders/presentation/cubit/checkout_state.dart';
+import 'package:mini_store_app/features/orders/presentation/cubit/order_history_cubit.dart';
 import 'package:mini_store_app/features/orders/presentation/screens/order_success_screen.dart';
 
 class _FakeCartRepository implements CartRepository {
@@ -39,6 +42,18 @@ class _FixedGenerator implements OrderNumberGenerator {
   String next() => 'MS-30001';
 }
 
+class _FakeOrderRepository implements OrderRepository {
+  List<Order> stored = const <Order>[];
+
+  @override
+  Future<List<Order>> loadOrders() async => stored;
+
+  @override
+  Future<void> saveOrders(List<Order> orders) async {
+    stored = orders;
+  }
+}
+
 const CartItem _item = CartItem(
   productId: 3,
   title: 'Cooking oil',
@@ -59,12 +74,15 @@ _pumpCart(WidgetTester tester, {bool failLoad = false}) async {
   final repository = _FakeCartRepository([_item], failLoad: failLoad);
   final cart = CartCubit(repository);
   await cart.loadCart();
+  final history = OrderHistoryCubit(_FakeOrderRepository());
+  await history.loadOrders();
   final checkout = CheckoutCubit(
     cart: cart,
     placeOrder: PlaceOrderUseCase(
       _FixedGenerator(),
       processingDelay: Duration.zero,
     ),
+    history: history,
   );
 
   Widget shell(Widget child) {

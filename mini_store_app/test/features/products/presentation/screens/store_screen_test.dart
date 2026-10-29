@@ -457,6 +457,63 @@ void main() {
     expect(find.text('Popular products'), findsOneWidget);
   });
 
+  testWidgets(
+    'collapses the search row into an app bar action and restores it',
+    (tester) async {
+      await _pumpStore(
+        tester,
+        repository: _loadedRepository(count: 10, total: 20),
+      );
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byTooltip('Search products'), findsNothing);
+
+      await tester.drag(
+        find.byKey(const ValueKey('store-scroll')),
+        const Offset(0, -400),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byTooltip('Search products'), findsOneWidget);
+      expect(
+        tester.widget<AppAppBar>(find.byType(AppAppBar)).preferredSize.height,
+        AppAppBar.defaultToolbarHeight,
+      );
+
+      await tester.drag(
+        find.byKey(const ValueKey('store-scroll')),
+        const Offset(0, 400),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(TextField), findsOneWidget);
+      expect(find.byTooltip('Search products'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'tapping the compact search action expands and focuses the field',
+    (tester) async {
+      await _pumpStore(
+        tester,
+        repository: _loadedRepository(count: 10, total: 20),
+      );
+
+      await tester.drag(
+        find.byKey(const ValueKey('store-scroll')),
+        const Offset(0, -400),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Search products'));
+      await tester.pumpAndSettle();
+
+      final field = tester.widget<TextField>(find.byType(TextField));
+      expect(field.focusNode?.hasFocus, isTrue);
+    },
+  );
+
   testWidgets('caps the search field width on wide screens', (tester) async {
     await _pumpStore(
       tester,

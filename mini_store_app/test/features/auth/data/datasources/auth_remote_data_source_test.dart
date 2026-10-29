@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mini_store_app/core/config/app_config.dart';
 import 'package:mini_store_app/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:mini_store_app/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:mini_store_app/features/auth/domain/failures/auth_failure.dart';
@@ -15,6 +16,21 @@ Dio _dioWith(FakeHttpAdapter adapter) {
       responseType: ResponseType.json,
     ),
   )..httpClientAdapter = adapter;
+}
+
+const AppConfig _config = AppConfig(
+  apiBaseUrl: 'https://dummyjson.test',
+  authLoginPath: '/auth/login',
+  authRefreshPath: '/auth/refresh',
+  productsPath: '/products',
+  productsSearchPath: '/products/search',
+  productDetailPath: '/products/{id}',
+  categoriesPath: '/products/categories',
+  categoryProductsPath: '/products/category/{slug}',
+);
+
+DioAuthRemoteDataSource _dataSource(FakeHttpAdapter adapter) {
+  return DioAuthRemoteDataSource(_dioWith(adapter), _config);
 }
 
 Map<String, Object> _loginBody({String username = 'emilys'}) {
@@ -37,7 +53,7 @@ void main() {
       final adapter = FakeHttpAdapter(
         (options) async => jsonResponse(_loginBody()),
       );
-      final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+      final dataSource = _dataSource(adapter);
 
       final response = await dataSource.login(
         username: ' emilys ',
@@ -68,7 +84,7 @@ void main() {
           'message': 'Invalid credentials',
         }, statusCode: 400),
       );
-      final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+      final dataSource = _dataSource(adapter);
 
       await expectLater(
         dataSource.login(username: 'wrong', password: 'wrong'),
@@ -90,7 +106,7 @@ void main() {
             'message': 'Invalid refresh token',
           }, statusCode: 401),
         );
-        final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+        final dataSource = _dataSource(adapter);
 
         await expectLater(
           dataSource.refresh(refreshToken: 'expired'),
@@ -118,7 +134,7 @@ void main() {
           'refreshToken': 'refresh-2',
         }),
       );
-      final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+      final dataSource = _dataSource(adapter);
 
       final response = await dataSource.refresh(refreshToken: 'refresh-1');
 
@@ -136,7 +152,7 @@ void main() {
       final adapter = FakeHttpAdapter(
         (options) async => jsonResponse(<String, Object>{'ok': true}),
       );
-      final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+      final dataSource = _dataSource(adapter);
 
       await expectLater(
         dataSource.login(username: 'emilys', password: 'emilyspass'),
@@ -154,7 +170,7 @@ void main() {
           },
         ),
       );
-      final dataSource = DioAuthRemoteDataSource(_dioWith(adapter));
+      final dataSource = _dataSource(adapter);
 
       final response = await dataSource.login(
         username: 'emilys',
@@ -173,9 +189,7 @@ void main() {
           'refreshToken': 'refresh-1',
         }),
       );
-      final repository = AuthRepositoryImpl(
-        DioAuthRemoteDataSource(_dioWith(adapter)),
-      );
+      final repository = AuthRepositoryImpl(_dataSource(adapter));
 
       await expectLater(
         repository.login(username: 'emilys', password: 'emilyspass'),
@@ -187,9 +201,7 @@ void main() {
       final adapter = FakeHttpAdapter(
         (options) async => jsonResponse(_loginBody()),
       );
-      final repository = AuthRepositoryImpl(
-        DioAuthRemoteDataSource(_dioWith(adapter)),
-      );
+      final repository = AuthRepositoryImpl(_dataSource(adapter));
 
       final session = await repository.login(
         username: 'emilys',

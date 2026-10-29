@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mini_store_app/core/theme/app_theme.dart';
+import 'package:mini_store_app/core/theme/theme_cubit.dart';
 import 'package:mini_store_app/features/account/presentation/screens/account_screen.dart';
 import 'package:mini_store_app/features/auth/domain/entities/auth_session.dart';
 import 'package:mini_store_app/features/auth/domain/entities/user.dart';
@@ -36,10 +37,15 @@ Future<TestAuthDependencies> _pumpAccount(
   addTearDown(dependencies.dispose);
   await dependencies.cubit.restoreSession();
 
+  final themeCubit = ThemeCubit.inMemory();
+  addTearDown(themeCubit.close);
   await tester.pumpWidget(
     BlocProvider<AuthCubit>.value(
       value: dependencies.cubit,
-      child: MaterialApp(theme: AppTheme.light, home: const AccountScreen()),
+      child: BlocProvider<ThemeCubit>.value(
+        value: themeCubit,
+        child: MaterialApp(theme: AppTheme.light, home: const AccountScreen()),
+      ),
     ),
   );
   await tester.pump();
@@ -71,6 +77,8 @@ void main() {
   testWidgets('cancelling the logout dialog keeps the session', (tester) async {
     final dependencies = await _pumpAccount(tester);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('account-logout')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('account-logout')));
     await tester.pumpAndSettle();
 
@@ -88,6 +96,8 @@ void main() {
   testWidgets('confirming logout clears the session', (tester) async {
     final dependencies = await _pumpAccount(tester);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('account-logout')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('account-logout')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('account-logout-confirm')));

@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_brand_mark.dart';
@@ -45,7 +46,7 @@ class LoginPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const _LoginHeader(),
-                    const SizedBox(height: AppSpacing.lg),
+                    const SizedBox(height: AppSpacing.lg + 5),
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(AppSpacing.lg),
@@ -61,7 +62,9 @@ class LoginPage extends StatelessWidget {
                               const SizedBox(height: AppSpacing.xxs),
                               Text(
                                 'Sign in to continue to your store.',
-                                style: AppTypography.bodySmall,
+                                style: AppTypography.bodySmall.copyWith(
+                                  color: context.palette.textSecondary,
+                                ),
                               ),
                               if (message != null) ...[
                                 const SizedBox(height: AppSpacing.md),
@@ -150,7 +153,7 @@ class LoginPage extends StatelessWidget {
                       'Use your Mini Store account to continue.',
                       textAlign: TextAlign.center,
                       style: AppTypography.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
+                        color: context.palette.textSecondary,
                       ),
                     ),
                   ],
@@ -220,7 +223,7 @@ class _LoginHeader extends StatelessWidget {
             Text(
               AppConstants.appTagline,
               style: AppTypography.labelSmall.copyWith(
-                color: AppColors.textSecondary,
+                color: context.palette.textSecondary,
               ),
             ),
           ],

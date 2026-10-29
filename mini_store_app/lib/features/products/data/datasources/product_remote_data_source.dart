@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../domain/failures/product_failure.dart';
 import '../models/product_list_response_model.dart';
 import '../product_error_mapper.dart';
@@ -26,15 +27,13 @@ abstract interface class ProductRemoteDataSource {
   });
 }
 
-/// DummyJSON product endpoints using the shared authenticated Dio client.
+/// Product endpoints configured through `.env` using the shared authenticated
+/// Dio client.
 class DioProductRemoteDataSource implements ProductRemoteDataSource {
-  DioProductRemoteDataSource(this._dio);
-
-  static const String productsPath = '/products';
-  static const String searchPath = '/products/search';
-  static const String categoriesPath = '/products/category';
+  DioProductRemoteDataSource(this._dio, this._config);
 
   final Dio _dio;
+  final AppConfig _config;
 
   @override
   Future<ProductListResponseModel> fetchProducts({
@@ -42,7 +41,7 @@ class DioProductRemoteDataSource implements ProductRemoteDataSource {
     required int limit,
   }) {
     return _get(
-      productsPath,
+      _config.productsPath,
       queryParameters: <String, dynamic>{'limit': limit, 'skip': skip},
     );
   }
@@ -54,7 +53,7 @@ class DioProductRemoteDataSource implements ProductRemoteDataSource {
     required int limit,
   }) {
     return _get(
-      searchPath,
+      _config.productsSearchPath,
       queryParameters: <String, dynamic>{
         'q': query,
         'limit': limit,
@@ -70,7 +69,7 @@ class DioProductRemoteDataSource implements ProductRemoteDataSource {
     required int limit,
   }) {
     return _get(
-      '$categoriesPath/${Uri.encodeComponent(slug)}',
+      _config.categoryProductsPathFor(slug),
       queryParameters: <String, dynamic>{'limit': limit, 'skip': skip},
     );
   }

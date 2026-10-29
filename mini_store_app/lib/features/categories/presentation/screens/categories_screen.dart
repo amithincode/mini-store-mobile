@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_app_bar.dart';
@@ -199,7 +200,7 @@ class _Intro extends StatelessWidget {
           Text(
             'Pick a department to see its latest products.',
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
             ),
           ),
         ],
@@ -419,7 +420,7 @@ class _RefreshNotice extends StatelessWidget {
     final isSession = failure.requiresReauthentication;
     final background = isSession
         ? AppColors.error.withValues(alpha: 0.08)
-        : AppColors.accentContainer;
+        : context.palette.accentContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -437,7 +438,7 @@ class _RefreshNotice extends StatelessWidget {
                 ? Icons.cloud_off_rounded
                 : Icons.sync_problem_rounded,
             size: 18,
-            color: isSession ? AppColors.error : AppColors.textPrimary,
+            color: isSession ? AppColors.error : context.palette.textPrimary,
           ),
           const SizedBox(width: AppSpacing.xs),
           Expanded(
@@ -454,7 +455,9 @@ class _RefreshNotice extends StatelessWidget {
             TextButton(
               onPressed: onRetry,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryDark,
+                foregroundColor: isSession
+                    ? AppColors.error
+                    : context.palette.onAccentContainer,
                 visualDensity: VisualDensity.compact,
               ),
               child: const Text('Retry'),

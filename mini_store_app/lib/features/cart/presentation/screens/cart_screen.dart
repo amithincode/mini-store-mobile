@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
@@ -12,6 +13,7 @@ import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../orders/presentation/cubit/checkout_cubit.dart';
 import '../../../orders/presentation/cubit/checkout_state.dart';
+import '../../../wishlist/presentation/widgets/wishlist_suggestions.dart';
 import '../cubit/cart_cubit.dart';
 import '../cubit/cart_state.dart';
 import '../widgets/cart_item_tile.dart';
@@ -56,6 +58,11 @@ class CartScreen extends StatelessWidget {
                       icon: Icons.shopping_cart_outlined,
                       actionLabel: 'Continue shopping',
                       onAction: onContinueShopping,
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: WishlistSuggestions(),
                     ),
                   ],
                 ),
@@ -116,6 +123,8 @@ class _FilledCart extends StatelessWidget {
                 icon: const Icon(Icons.arrow_back_rounded, size: 18),
                 label: const Text('Continue shopping'),
               ),
+              const SizedBox(height: AppSpacing.md),
+              const WishlistSuggestions(),
               const SizedBox(height: AppSpacing.lg),
             ],
           ),
@@ -151,7 +160,7 @@ class _CartSummary extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.surface,
+      color: context.palette.surface,
       elevation: 12,
       child: SafeArea(
         top: false,
@@ -173,7 +182,7 @@ class _CartSummary extends StatelessWidget {
                           '${state.itemCount == 1 ? 'unit' : 'units'}',
                           key: const ValueKey('cart-total-units'),
                           style: AppTypography.bodyMedium.copyWith(
-                            color: AppColors.textSecondary,
+                            color: context.palette.textSecondary,
                           ),
                         ),
                       ),
@@ -183,7 +192,7 @@ class _CartSummary extends StatelessWidget {
                         formatPrice(state.totalPrice),
                         key: const ValueKey('cart-total-price'),
                         style: AppTypography.titleLarge.copyWith(
-                          color: AppColors.primaryDark,
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ],
@@ -198,7 +207,7 @@ class _CartSummary extends StatelessWidget {
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.2,
-                              color: AppColors.surface,
+                              color: Colors.white,
                             ),
                           )
                         : const Icon(Icons.lock_outline_rounded),
@@ -299,7 +308,14 @@ class _InlineError extends StatelessWidget {
             color: AppColors.error,
           ),
           const SizedBox(width: AppSpacing.xs),
-          Expanded(child: Text(message, style: AppTypography.bodySmall)),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTypography.bodySmall.copyWith(
+                color: context.palette.textPrimary,
+              ),
+            ),
+          ),
         ],
       ),
     );

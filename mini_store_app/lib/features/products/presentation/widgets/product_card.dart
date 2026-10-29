@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../wishlist/presentation/widgets/wishlist_heart.dart';
 import '../../domain/entities/product.dart';
 import '../utils/product_category_label.dart';
 import '../utils/product_image_hero.dart';
@@ -41,7 +43,7 @@ class ProductCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   ColoredBox(
-                    color: AppColors.imageBackground,
+                    color: context.palette.imageBackground,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
                       child: _hero(
@@ -61,6 +63,11 @@ class ProductCard extends StatelessWidget {
                         label: formatDiscount(product.discountPercentage),
                       ),
                     ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: WishlistHeart(product: product, compact: true),
+                  ),
                 ],
               ),
             ),
@@ -74,7 +81,9 @@ class ProductCard extends StatelessWidget {
                     meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.productMeta,
+                    style: AppTypography.productMeta.copyWith(
+                      color: context.palette.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -97,7 +106,9 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(width: 2),
                       Text(
                         formatRating(product.rating),
-                        style: AppTypography.rating,
+                        style: AppTypography.rating.copyWith(
+                          color: context.palette.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -133,7 +144,10 @@ class _DiscountBadge extends StatelessWidget {
         color: AppColors.accent,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: AppTypography.badge),
+      child: Text(
+        label,
+        style: AppTypography.badge.copyWith(color: AppColors.textPrimary),
+      ),
     );
   }
 }

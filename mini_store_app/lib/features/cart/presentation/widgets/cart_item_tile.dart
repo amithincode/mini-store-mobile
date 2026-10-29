@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
@@ -37,7 +37,7 @@ class CartItemTile extends StatelessWidget {
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: ColoredBox(
-                color: AppColors.imageBackground,
+                color: context.palette.imageBackground,
                 child: SizedBox(
                   width: 72,
                   height: 72,
@@ -149,8 +149,8 @@ class _QuantityButton extends StatelessWidget {
       tooltip: tooltip,
       visualDensity: VisualDensity.compact,
       style: IconButton.styleFrom(
-        minimumSize: const Size(36, 36),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        minimumSize: const Size(44, 44),
+        tapTargetSize: MaterialTapTargetSize.padded,
       ),
       icon: Icon(icon, size: 18),
     );

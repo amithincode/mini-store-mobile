@@ -3,10 +3,20 @@ import 'package:mini_store_app/core/config/app_config.dart';
 import 'package:mini_store_app/core/network/api_log_interceptor.dart';
 import 'package:mini_store_app/core/network/dio_client.dart';
 
+const AppConfig _config = AppConfig(
+  apiBaseUrl: 'https://dummyjson.com',
+  authLoginPath: '/auth/login',
+  authRefreshPath: '/auth/refresh',
+  productsPath: '/products',
+  productsSearchPath: '/products/search',
+  productDetailPath: '/products/{id}',
+  categoriesPath: '/products/categories',
+  categoryProductsPath: '/products/category/{slug}',
+);
+
 void main() {
   test('configures the Dio client without making a request', () {
-    const config = AppConfig(apiBaseUrl: 'https://dummyjson.com');
-    final dio = createDioClient(config);
+    final dio = createDioClient(_config);
 
     expect(dio.options.baseUrl, 'https://dummyjson.com');
     expect(dio.options.connectTimeout, const Duration(seconds: 15));
@@ -20,10 +30,9 @@ void main() {
   });
 
   test('accepts a shared logger so request numbering continues', () {
-    const config = AppConfig(apiBaseUrl: 'https://dummyjson.com');
     final logger = ApiLogInterceptor();
-    final first = createDioClient(config, logInterceptor: logger);
-    final second = createDioClient(config, logInterceptor: logger);
+    final first = createDioClient(_config, logInterceptor: logger);
+    final second = createDioClient(_config, logInterceptor: logger);
 
     expect(first.interceptors.contains(logger), isTrue);
     expect(second.interceptors.contains(logger), isTrue);

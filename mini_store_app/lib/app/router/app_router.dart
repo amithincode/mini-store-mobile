@@ -12,11 +12,15 @@ import '../../features/categories/presentation/cubit/categories_cubit.dart';
 import '../../features/cart/presentation/cubit/cart_cubit.dart';
 import '../../features/notifications/presentation/screens/notifications_screen.dart';
 import '../../features/orders/presentation/cubit/checkout_cubit.dart';
+import '../../features/orders/presentation/cubit/order_history_cubit.dart';
 import '../../features/orders/presentation/screens/order_success_screen.dart';
+import '../../features/orders/presentation/screens/orders_screen.dart';
 import '../../features/product_details/presentation/cubit/product_detail_cubit.dart';
 import '../../features/product_details/presentation/screens/product_detail_screen.dart';
 import '../../features/products/presentation/cubit/product_list_cubit.dart';
 import '../../features/products/presentation/screens/category_products_screen.dart';
+import '../../features/wishlist/presentation/cubit/wishlist_cubit.dart';
+import '../../features/wishlist/presentation/screens/wishlist_screen.dart';
 import '../shell/main_shell.dart';
 import '../shell/main_tab_controller.dart';
 import 'go_router_refresh_stream.dart';
@@ -36,6 +40,10 @@ abstract final class AppRoutes {
   static const String orderSuccessName = 'orderSuccess';
   static const String notifications = '/notifications';
   static const String notificationsName = 'notifications';
+  static const String wishlist = '/account/wishlist';
+  static const String wishlistName = 'wishlist';
+  static const String orders = '/account/orders';
+  static const String ordersName = 'orders';
 }
 
 /// Application routing. The auth cubit is the single source of truth; the
@@ -49,6 +57,8 @@ abstract final class AppRouter {
     ProductDetailCubit Function()? createProductDetailCubit,
     CartCubit? cartCubit,
     CheckoutCubit? checkoutCubit,
+    WishlistCubit? wishlistCubit,
+    OrderHistoryCubit? orderHistoryCubit,
     MainTabController? tabController,
   }) {
     return GoRouter(
@@ -91,6 +101,12 @@ abstract final class AppRouter {
                   BlocProvider<CartCubit>.value(value: cartCubit),
                 if (checkoutCubit != null)
                   BlocProvider<CheckoutCubit>.value(value: checkoutCubit),
+                if (wishlistCubit != null)
+                  BlocProvider<WishlistCubit>.value(value: wishlistCubit),
+                if (orderHistoryCubit != null)
+                  BlocProvider<OrderHistoryCubit>.value(
+                    value: orderHistoryCubit,
+                  ),
               ],
               child: MainShell(
                 createProductListCubit: createProductListCubit,
@@ -121,8 +137,12 @@ abstract final class AppRouter {
               );
             }
 
-            return BlocProvider<CartCubit>.value(
-              value: cartCubit,
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider<CartCubit>.value(value: cartCubit),
+                if (wishlistCubit != null)
+                  BlocProvider<WishlistCubit>.value(value: wishlistCubit),
+              ],
               child: ProductDetailScreen(
                 productId: id,
                 createCubit: createProductDetailCubit,
@@ -150,10 +170,47 @@ abstract final class AppRouter {
               );
             }
 
-            return CategoryProductsScreen(
+            final screen = CategoryProductsScreen(
               slug: slug,
               name: name,
               createCubit: () => createCategoryProductListCubit(slug),
+            );
+
+            if (wishlistCubit == null) {
+              return screen;
+            }
+
+            return BlocProvider<WishlistCubit>.value(
+              value: wishlistCubit,
+              child: screen,
+            );
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.wishlist,
+          name: AppRoutes.wishlistName,
+          builder: (context, state) {
+            return MultiBlocProvider(
+              providers: [
+                if (wishlistCubit != null)
+                  BlocProvider<WishlistCubit>.value(value: wishlistCubit),
+                if (cartCubit != null)
+                  BlocProvider<CartCubit>.value(value: cartCubit),
+              ],
+              child: const WishlistScreen(),
+            );
+          },
+        ),
+        GoRoute(
+          path: AppRoutes.orders,
+          name: AppRoutes.ordersName,
+          builder: (context, state) {
+            if (orderHistoryCubit == null) {
+              return const OrdersScreen();
+            }
+            return BlocProvider<OrderHistoryCubit>.value(
+              value: orderHistoryCubit,
+              child: const OrdersScreen(),
             );
           },
         ),

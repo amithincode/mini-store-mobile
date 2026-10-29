@@ -11,6 +11,7 @@ import 'app/di/injector.dart';
 import 'app/startup_error_app.dart';
 import 'core/config/app_config.dart';
 import 'core/theme/app_system_ui.dart';
+import 'core/theme/theme_cubit.dart';
 import 'features/auth/presentation/cubit/auth_cubit.dart';
 
 Future<void> main() async {
@@ -24,6 +25,11 @@ Future<void> main() async {
 
     final router = getIt<GoRouter>();
     final authCubit = getIt<AuthCubit>();
+    final themeCubit = getIt<ThemeCubit>();
+
+    SystemChrome.setSystemUIOverlayStyle(
+      themeCubit.state == ThemeMode.dark ? AppSystemUi.dark : AppSystemUi.light,
+    );
 
     if (kDebugMode) {
       debugPrint(
@@ -32,7 +38,13 @@ Future<void> main() async {
       );
     }
 
-    runApp(MiniStoreApp(router: router, enableDevicePreview: false));
+    runApp(
+      MiniStoreApp(
+        router: router,
+        themeCubit: themeCubit,
+        enableDevicePreview: false,
+      ),
+    );
     // runApp(MiniStoreApp(router: router, enableDevicePreview: !kReleaseMode));
     unawaited(authCubit.restoreSession());
   } catch (error, stackTrace) {

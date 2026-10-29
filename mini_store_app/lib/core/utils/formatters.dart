@@ -22,3 +22,27 @@ String formatPrice(double price) {
 String formatRating(double rating) => rating.toStringAsFixed(1);
 
 String formatDiscount(double percentage) => '-${percentage.round()}%';
+
+const List<String> _months = <String>[
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// Compact, locale-independent date for order history receipts.
+String formatOrderDate(DateTime value) {
+  final local = value.toLocal();
+  final month = _months[local.month - 1];
+  final hour = local.hour.toString().padLeft(2, '0');
+  final minute = local.minute.toString().padLeft(2, '0');
+  return '${local.day} $month ${local.year}, $hour:$minute';
+}

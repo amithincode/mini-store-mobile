@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../domain/failures/auth_failure.dart';
 import '../auth_error_mapper.dart';
 import '../models/auth_response_model.dart';
@@ -17,11 +18,12 @@ abstract interface class AuthRemoteDataSource {
   Future<AuthResponseModel> refresh({required String refreshToken});
 }
 
-/// DummyJSON authentication endpoints.
+/// Authentication endpoints configured through `.env`.
 class DioAuthRemoteDataSource implements AuthRemoteDataSource {
-  DioAuthRemoteDataSource(this._dio);
+  DioAuthRemoteDataSource(this._dio, this._config);
 
   final Dio _dio;
+  final AppConfig _config;
 
   @override
   Future<AuthResponseModel> login({
@@ -30,7 +32,7 @@ class DioAuthRemoteDataSource implements AuthRemoteDataSource {
   }) async {
     try {
       final response = await _dio.post<Object?>(
-        '/auth/login',
+        _config.authLoginPath,
         data: LoginRequestModel(
           username: username,
           password: password,
@@ -50,7 +52,7 @@ class DioAuthRemoteDataSource implements AuthRemoteDataSource {
   Future<AuthResponseModel> refresh({required String refreshToken}) async {
     try {
       final response = await _dio.post<Object?>(
-        '/auth/refresh',
+        _config.authRefreshPath,
         data: <String, dynamic>{
           'refreshToken': refreshToken,
           'expiresInMins': 30,

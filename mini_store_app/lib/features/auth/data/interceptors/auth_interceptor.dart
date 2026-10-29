@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../domain/failures/auth_failure.dart';
 import '../../domain/repositories/session_repository.dart';
 import '../../domain/session/session_expiration_notifier.dart';
@@ -16,10 +17,12 @@ class AuthInterceptor extends Interceptor {
     required SessionRepository sessionRepository,
     required RefreshSessionUseCase refreshSession,
     required SessionExpirationNotifier expirationNotifier,
+    required AppConfig config,
   }) : _dio = dio,
        _sessionRepository = sessionRepository,
        _refreshSession = refreshSession,
-       _expirationNotifier = expirationNotifier;
+       _expirationNotifier = expirationNotifier,
+       _config = config;
 
   static const String skipAuthKey = 'mini_store.skip_auth';
   static const String retriedKey = 'mini_store.auth_retried';
@@ -30,6 +33,7 @@ class AuthInterceptor extends Interceptor {
   final SessionRepository _sessionRepository;
   final RefreshSessionUseCase _refreshSession;
   final SessionExpirationNotifier _expirationNotifier;
+  final AppConfig _config;
 
   Future<String?>? _refreshInFlight;
   Future<void>? _expirationInFlight;
@@ -166,6 +170,7 @@ class AuthInterceptor extends Interceptor {
     }
 
     final path = options.path;
-    return path.endsWith('/auth/login') || path.endsWith('/auth/refresh');
+    return path.endsWith(_config.authLoginPath) ||
+        path.endsWith(_config.authRefreshPath);
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../constants/app_constants.dart';
-import '../theme/app_colors.dart';
 import '../theme/app_system_ui.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
@@ -26,6 +25,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.backgroundColor,
     this.foregroundColor,
     this.gradient,
+    this.bottom,
     this.showDivider = true,
     this.systemOverlayStyle,
     this.borderRadius,
@@ -46,6 +46,12 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   /// When set, the bar paints this gradient instead of [backgroundColor].
   final Gradient? gradient;
+
+  /// Optional second row rendered below the toolbar, above the divider.
+  ///
+  /// The bar adds the row's [PreferredSizeWidget.preferredSize] height to its
+  /// own so the body starts below it.
+  final PreferredSizeWidget? bottom;
   final bool showDivider;
   final SystemUiOverlayStyle? systemOverlayStyle;
   final BorderRadius? borderRadius;
@@ -54,24 +60,29 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
   final TextStyle? subtitleStyle;
 
   @override
-  Size get preferredSize =>
-      Size.fromHeight(toolbarHeight + (showDivider ? dividerHeight : 0));
+  Size get preferredSize => Size.fromHeight(
+    toolbarHeight +
+        (bottom?.preferredSize.height ?? 0) +
+        (showDivider ? dividerHeight : 0),
+  );
 
   /// The tone actually painted behind the status bar, used to keep its icons
   /// readable. Gradients resolve to their darkest stop.
-  Color get _barColor {
+  Color _barColor(Color fallback) {
     final gradient = this.gradient;
     if (gradient is LinearGradient && gradient.colors.isNotEmpty) {
       return gradient.colors.reduce(
         (a, b) => a.computeLuminance() <= b.computeLuminance() ? a : b,
       );
     }
-    return backgroundColor ?? AppColors.surface;
+    return backgroundColor ?? fallback;
   }
 
   @override
   Widget build(BuildContext context) {
-    final foreground = foregroundColor ?? AppColors.textPrimary;
+    final scheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    final foreground = foregroundColor ?? scheme.onSurface;
 
     return AppBar(
       toolbarHeight: toolbarHeight,
@@ -82,9 +93,11 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
       surfaceTintColor: Colors.transparent,
       foregroundColor: foreground,
       backgroundColor: gradient == null
-          ? (backgroundColor ?? AppColors.surface)
+          ? (backgroundColor ?? scheme.surface)
           : Colors.transparent,
-      systemOverlayStyle: systemOverlayStyle ?? AppSystemUi.forBar(_barColor),
+      systemOverlayStyle:
+          systemOverlayStyle ??
+          AppSystemUi.forBar(_barColor(scheme.surface), brightness: brightness),
       shape: borderRadius == null
           ? null
           : RoundedRectangleBorder(borderRadius: borderRadius!),
@@ -140,7 +153,7 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
                               style:
                                   (subtitleStyle ??
                                           AppTypography.labelSmall.copyWith(
-                                            color: AppColors.textSecondary,
+                                            color: scheme.onSurfaceVariant,
                                           ))
                                       .copyWith(
                                         color: foreground.withValues(
@@ -162,17 +175,38 @@ class AppAppBar extends StatelessWidget implements PreferredSizeWidget {
           );
         },
       ),
-      bottom: showDivider
-          ? PreferredSize(
-              preferredSize: const Size.fromHeight(dividerHeight),
-              child: Container(
-                height: dividerHeight,
-                color: foregroundColor == null
-                    ? AppColors.border
-                    : Colors.white.withValues(alpha: 0.18),
-              ),
-            )
-          : null,
+      bottom: _buildBottom(scheme),
+    );
+  }
+
+  /// Stacks the optional second row and the divider into the single slot an
+  /// [AppBar] accepts.
+  PreferredSizeWidget? _buildBottom(ColorScheme scheme) {
+    final bottom = this.bottom;
+    if (bottom == null && !showDivider) {
+      return null;
+    }
+
+    final bottomHeight = bottom?.preferredSize.height ?? 0;
+
+    return PreferredSize(
+      preferredSize: Size.fromHeight(
+        bottomHeight + (showDivider ? dividerHeight : 0),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (bottom != null) SizedBox(height: bottomHeight, child: bottom),
+          if (showDivider)
+            Container(
+              height: dividerHeight,
+              color: foregroundColor == null
+                  ? scheme.outlineVariant
+                  : Colors.white.withValues(alpha: 0.18),
+            ),
+        ],
+      ),
     );
   }
 }

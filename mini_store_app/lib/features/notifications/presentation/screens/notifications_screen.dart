@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/app_app_bar.dart';
@@ -59,7 +60,7 @@ class NotificationsScreen extends StatelessWidget {
                   'Order updates and offers will appear here.',
                   textAlign: TextAlign.center,
                   style: AppTypography.bodyMedium.copyWith(
-                    color: AppColors.textSecondary,
+                    color: context.palette.textSecondary,
                   ),
                 ),
                 const SizedBox(height: AppSpacing.lg),
@@ -95,15 +96,15 @@ class _EmptyBell extends StatelessWidget {
               width: 140,
               height: 140,
               decoration: BoxDecoration(
-                color: AppColors.primaryContainer.withValues(alpha: 0.55),
+                color: context.palette.primaryContainer.withValues(alpha: 0.55),
                 shape: BoxShape.circle,
               ),
             ),
             Container(
               width: 100,
               height: 100,
-              decoration: const BoxDecoration(
-                color: AppColors.surface,
+              decoration: BoxDecoration(
+                color: context.palette.surface,
                 shape: BoxShape.circle,
               ),
               child: const Icon(
@@ -121,7 +122,7 @@ class _EmptyBell extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AppColors.accent,
                   shape: BoxShape.circle,
-                  border: Border.all(color: AppColors.surface, width: 2),
+                  border: Border.all(color: context.palette.surface, width: 2),
                 ),
               ),
             ),

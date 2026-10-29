@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 
 /// Presentational cart action for the shared app bar.
 ///
@@ -26,8 +26,8 @@ class CartIconButton extends StatelessWidget {
         child: const Icon(Icons.shopping_cart_outlined, size: 20),
       ),
       style: IconButton.styleFrom(
-        backgroundColor: AppColors.primaryContainer,
-        foregroundColor: AppColors.primaryDark,
+        backgroundColor: context.palette.primaryContainer,
+        foregroundColor: context.palette.onPrimaryContainer,
       ),
     );
   }

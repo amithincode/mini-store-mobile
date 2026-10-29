@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../theme/app_colors.dart';
+import '../theme/app_palette.dart';
 
 /// Network image with disk caching, a static skeleton while loading, and a
 /// compact broken-image fallback.
@@ -70,13 +70,13 @@ class _Skeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
-      color: AppColors.imageBackground,
+    return ColoredBox(
+      color: context.palette.imageBackground,
       child: Center(
         child: Icon(
           Icons.photo_size_select_actual_outlined,
           size: 22,
-          color: Color(0x332563EB),
+          color: context.palette.textSecondary.withValues(alpha: 0.45),
         ),
       ),
     );
@@ -94,7 +94,7 @@ class _Fallback extends StatelessWidget {
       child: Icon(
         icon,
         size: 32,
-        color: AppColors.textSecondary.withValues(alpha: 0.55),
+        color: context.palette.textSecondary.withValues(alpha: 0.55),
       ),
     );
   }

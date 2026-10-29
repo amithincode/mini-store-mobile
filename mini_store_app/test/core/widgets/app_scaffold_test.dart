@@ -96,7 +96,7 @@ void main() {
             title: 'Home',
             showDivider: false,
             foregroundColor: Colors.white,
-            gradient: AppColors.primaryGradient,
+            backgroundColor: AppColors.primaryGradient.colors.first,
           ),
           body: const SizedBox(height: 200),
         ),

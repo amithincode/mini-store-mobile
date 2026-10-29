@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_system_ui.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -16,6 +17,7 @@ import '../../../products/domain/entities/product.dart';
 import '../../../products/domain/entities/product_review.dart';
 import '../../../products/domain/failures/product_failure.dart';
 import '../../../products/presentation/utils/product_image_hero.dart';
+import '../../../wishlist/presentation/widgets/wishlist_heart.dart';
 import '../cubit/product_detail_cubit.dart';
 import '../cubit/product_detail_state.dart';
 
@@ -50,11 +52,9 @@ class _ProductDetailView extends StatelessWidget {
     return BlocBuilder<ProductDetailCubit, ProductDetailState>(
       builder: (context, state) => switch (state) {
         ProductDetailInitial() || ProductDetailLoading() => const Scaffold(
-          backgroundColor: AppColors.background,
           body: Center(child: AppLoadingView(message: 'Loading product…')),
         ),
         ProductDetailOffline() => Scaffold(
-          backgroundColor: AppColors.background,
           appBar: _detailAppBar(context),
           body: Center(
             child: Padding(
@@ -71,7 +71,6 @@ class _ProductDetailView extends StatelessWidget {
           ),
         ),
         ProductDetailFailure() => Scaffold(
-          backgroundColor: AppColors.background,
           appBar: _detailAppBar(context),
           body: Center(
             child: Padding(
@@ -98,10 +97,14 @@ class _ProductDetailView extends StatelessWidget {
 }
 
 PreferredSizeWidget _detailAppBar(BuildContext context) {
+  final scheme = Theme.of(context).colorScheme;
   return AppBar(
-    backgroundColor: AppColors.surface,
-    foregroundColor: AppColors.textPrimary,
-    systemOverlayStyle: AppSystemUi.light,
+    backgroundColor: scheme.surface,
+    foregroundColor: scheme.onSurface,
+    systemOverlayStyle: AppSystemUi.forBar(
+      scheme.surface,
+      brightness: Theme.of(context).brightness,
+    ),
     elevation: 0,
     leading: IconButton(
       tooltip: 'Back',
@@ -128,8 +131,9 @@ class _LoadedProduct extends StatelessWidget {
   Widget build(BuildContext context) {
     final product = state.product;
 
+    final scheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
       bottomNavigationBar: _CartBar(product: product, onGoToCart: onGoToCart),
       body: CustomScrollView(
         key: const ValueKey('product-detail-scroll'),
@@ -137,9 +141,12 @@ class _LoadedProduct extends StatelessWidget {
           SliverAppBar(
             pinned: true,
             expandedHeight: 330,
-            backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.textPrimary,
-            systemOverlayStyle: AppSystemUi.light,
+            backgroundColor: scheme.surface,
+            foregroundColor: scheme.onSurface,
+            systemOverlayStyle: AppSystemUi.forBar(
+              scheme.surface,
+              brightness: Theme.of(context).brightness,
+            ),
             leading: IconButton(
               tooltip: 'Back',
               onPressed: () {
@@ -152,6 +159,12 @@ class _LoadedProduct extends StatelessWidget {
               },
               icon: const Icon(Icons.arrow_back_rounded),
             ),
+            actions: [
+              Padding(
+                padding: const EdgeInsets.only(right: AppSpacing.xs),
+                child: WishlistHeart(product: product),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: _ImageCarousel(product: product),
             ),
@@ -183,7 +196,7 @@ class _LoadedProduct extends StatelessWidget {
                   ),
                 _Info(product: product),
                 const SizedBox(height: AppSpacing.lg),
-                const Divider(color: AppColors.border),
+                Divider(color: Theme.of(context).colorScheme.outlineVariant),
                 const SizedBox(height: AppSpacing.lg),
                 Text('Description', style: AppTypography.titleLarge),
                 const SizedBox(height: AppSpacing.xs),
@@ -232,13 +245,13 @@ class _ImageCarouselState extends State<_ImageCarousel> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: AppColors.imageBackground),
+        ColoredBox(color: context.palette.imageBackground),
         if (images.isEmpty)
-          const Center(
+          Center(
             child: Icon(
               Icons.image_outlined,
               size: 48,
-              color: AppColors.textSecondary,
+              color: context.palette.textSecondary,
             ),
           )
         else
@@ -279,7 +292,7 @@ class _ImageCarouselState extends State<_ImageCarousel> {
                   decoration: BoxDecoration(
                     color: index == _index
                         ? AppColors.primary
-                        : AppColors.textSecondary.withValues(alpha: .35),
+                        : context.palette.textSecondary.withValues(alpha: .35),
                     borderRadius: BorderRadius.circular(9),
                   ),
                 ),
@@ -326,13 +339,18 @@ class _Info extends StatelessWidget {
             Text(
               formatPrice(product.price),
               style: AppTypography.headlineSmall.copyWith(
-                color: AppColors.primaryDark,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
             if (product.hasDiscount)
               Chip(
                 label: Text(formatDiscount(product.discountPercentage)),
-                backgroundColor: AppColors.accentContainer,
+                backgroundColor: context.palette.accentContainer,
+                labelStyle: TextStyle(
+                  color: context.palette.onAccentContainer,
+                  fontFamily: AppTypography.fontFamily,
+                  fontWeight: FontWeight.w600,
+                ),
                 side: BorderSide.none,
               ),
             Row(
@@ -502,22 +520,22 @@ class _CartBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Material(
       color: Colors.transparent,
       elevation: 0,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
+          gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Color(0xFFEAF4FF),
-              Color(0xFFDCEBFF),
-            ],
+            colors: isDark
+                ? [palette.surfaceElevated, palette.surface]
+                : const [Color(0xFFEAF4FF), Color(0xFFDCEBFF)],
           ),
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(26),
-          ),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
           boxShadow: [
             BoxShadow(
               color: AppColors.primary.withValues(alpha: 0.12),
@@ -557,7 +575,7 @@ class _CartBar extends StatelessWidget {
                           )
                         : const Icon(Icons.add_shopping_cart_rounded),
                     label: Text(busy ? 'Adding…' : 'Add to cart'),
-                    style: _lightActionStyle,
+                    style: _actionStyle(context),
                   );
                 }
 
@@ -570,10 +588,14 @@ class _CartBar extends StatelessWidget {
                         vertical: AppSpacing.xxs,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.88),
+                        color: isDark
+                            ? palette.surfaceElevated
+                            : Colors.white.withValues(alpha: 0.88),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: const Color(0xFFD4E5FC),
+                          color: isDark
+                              ? palette.border
+                              : const Color(0xFFD4E5FC),
                         ),
                       ),
                       child: Row(
@@ -588,7 +610,9 @@ class _CartBar extends StatelessWidget {
                                     ? '1 item in your cart'
                                     : '$quantity items in your cart',
                                 style: AppTypography.titleSmall.copyWith(
-                                  color: const Color(0xFF355781),
+                                  color: isDark
+                                      ? palette.textPrimary
+                                      : const Color(0xFF355781),
                                 ),
                               ),
                             ),
@@ -605,7 +629,7 @@ class _CartBar extends StatelessWidget {
                                   ),
                             tooltip: 'Remove one item',
                             icon: const Icon(Icons.remove_rounded),
-                            style: _stepperStyle,
+                            style: _stepperStyle(context),
                           ),
                           SizedBox(
                             width: 38,
@@ -614,7 +638,9 @@ class _CartBar extends StatelessWidget {
                               key: const ValueKey('detail-quantity'),
                               textAlign: TextAlign.center,
                               style: AppTypography.titleMedium.copyWith(
-                                color: const Color(0xFF18345B),
+                                color: isDark
+                                    ? palette.textPrimary
+                                    : const Color(0xFF18345B),
                                 fontWeight: FontWeight.w700,
                               ),
                             ),
@@ -631,7 +657,7 @@ class _CartBar extends StatelessWidget {
                                   ),
                             tooltip: 'Add one item',
                             icon: const Icon(Icons.add_rounded),
-                            style: _stepperStyle,
+                            style: _stepperStyle(context),
                           ),
                         ],
                       ),
@@ -642,7 +668,7 @@ class _CartBar extends StatelessWidget {
                       onPressed: busy ? null : onGoToCart,
                       icon: const Icon(Icons.shopping_cart_rounded),
                       label: const Text('Go to cart'),
-                      style: _lightActionStyle,
+                      style: _actionStyle(context),
                     ),
                   ],
                 );
@@ -654,30 +680,41 @@ class _CartBar extends StatelessWidget {
     );
   }
 
-  static final ButtonStyle _lightActionStyle = FilledButton.styleFrom(
-    backgroundColor: const Color(0xFF347FE5),
-    foregroundColor: Colors.white,
-    disabledBackgroundColor: const Color(0xFFAAC9F3),
-    disabledForegroundColor: Colors.white70,
-    minimumSize: const Size.fromHeight(52),
-    textStyle: AppTypography.labelLarge.copyWith(
-      fontWeight: FontWeight.w700,
-    ),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(18),
-    ),
-    elevation: 0,
-  );
+  static ButtonStyle _actionStyle(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return FilledButton.styleFrom(
+      backgroundColor: const Color(0xFF347FE5),
+      foregroundColor: Colors.white,
+      disabledBackgroundColor: isDark
+          ? const Color(0xFF1E3A8A)
+          : const Color(0xFFAAC9F3),
+      disabledForegroundColor: Colors.white70,
+      minimumSize: const Size.fromHeight(52),
+      textStyle: AppTypography.labelLarge.copyWith(fontWeight: FontWeight.w700),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      elevation: 0,
+    );
+  }
 
-  static final ButtonStyle _stepperStyle = IconButton.styleFrom(
-    backgroundColor: const Color(0xFFEAF3FF),
-    foregroundColor: const Color(0xFF2878E5),
-    disabledBackgroundColor: const Color(0xFFF2F6FC),
-    disabledForegroundColor: const Color(0xFFB0C4DF),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  );
+  static ButtonStyle _stepperStyle(BuildContext context) {
+    final palette = context.palette;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return IconButton.styleFrom(
+      backgroundColor: isDark
+          ? palette.primaryContainer
+          : const Color(0xFFEAF3FF),
+      foregroundColor: isDark
+          ? palette.onPrimaryContainer
+          : const Color(0xFF2878E5),
+      disabledBackgroundColor: isDark
+          ? palette.surface
+          : const Color(0xFFF2F6FC),
+      disabledForegroundColor: isDark
+          ? palette.textSecondary
+          : const Color(0xFFB0C4DF),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
 
   Future<void> _addToCart(BuildContext context) async {
     final succeeded = await context.read<CartCubit>().addItem(product);
@@ -768,7 +805,7 @@ class _CartBar extends StatelessWidget {
 //                           )
 //                         : const Icon(Icons.add_shopping_cart_rounded),
 //                     label: Text(busy ? 'Adding…' : 'Add to cart'),
-//                     style: _lightActionStyle,
+//                     style: _actionStyle(context),
 //                   );
 //                 }
 
@@ -813,7 +850,7 @@ class _CartBar extends StatelessWidget {
 //                                   ),
 //                             tooltip: 'Remove one item',
 //                             icon: const Icon(Icons.remove_rounded),
-//                             style: _stepperStyle,
+//                             style: _stepperStyle(context),
 //                           ),
 //                           SizedBox(
 //                             width: 38,
@@ -839,7 +876,7 @@ class _CartBar extends StatelessWidget {
 //                                   ),
 //                             tooltip: 'Add one item',
 //                             icon: const Icon(Icons.add_rounded),
-//                             style: _stepperStyle,
+//                             style: _stepperStyle(context),
 //                           ),
 //                         ],
 //                       ),
@@ -850,7 +887,7 @@ class _CartBar extends StatelessWidget {
 //                       onPressed: busy ? null : onGoToCart,
 //                       icon: const Icon(Icons.shopping_cart_rounded),
 //                       label: const Text('Go to cart'),
-//                       style: _lightActionStyle,
+//                       style: _actionStyle(context),
 //                     ),
 //                   ],
 //                 );
@@ -925,7 +962,7 @@ class _RefreshNotice extends StatelessWidget {
     final isSession = failure.requiresReauthentication;
     final background = isSession
         ? AppColors.error.withValues(alpha: 0.08)
-        : AppColors.accentContainer;
+        : context.palette.accentContainer;
 
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -959,7 +996,9 @@ class _RefreshNotice extends StatelessWidget {
             TextButton(
               onPressed: onRetry,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryDark,
+                foregroundColor: isSession
+                    ? AppColors.error
+                    : context.palette.onAccentContainer,
                 visualDensity: VisualDensity.compact,
               ),
               child: const Text('Retry'),

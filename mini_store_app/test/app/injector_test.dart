@@ -25,6 +25,19 @@ import 'package:mini_store_app/features/products/presentation/cubit/product_list
 import 'package:mini_store_app/features/products/presentation/cubit/product_list_state.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+AppConfig _config(String baseUrl) {
+  return AppConfig(
+    apiBaseUrl: baseUrl,
+    authLoginPath: '/auth/login',
+    authRefreshPath: '/auth/refresh',
+    productsPath: '/products',
+    productsSearchPath: '/products/search',
+    productDetailPath: '/products/{id}',
+    categoriesPath: '/products/categories',
+    categoryProductsPath: '/products/category/{slug}',
+  );
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -39,7 +52,7 @@ void main() {
 
   test('registers config, storage, auth and product services, Dio, cubit, and '
       'router', () async {
-    const config = AppConfig(apiBaseUrl: 'https://dummyjson.com');
+    final config = _config('https://dummyjson.com');
 
     await configureDependencies(config: config);
 
@@ -85,12 +98,10 @@ void main() {
   });
 
   test('is safe to configure more than once', () async {
-    const firstConfig = AppConfig(apiBaseUrl: 'https://dummyjson.com');
+    final firstConfig = _config('https://dummyjson.com');
 
     await configureDependencies(config: firstConfig);
-    await configureDependencies(
-      config: const AppConfig(apiBaseUrl: 'https://example.com'),
-    );
+    await configureDependencies(config: _config('https://example.com'));
 
     expect(getIt<AppConfig>(), same(firstConfig));
     expect(getIt<AppStorage>(), isA<AppStorage>());

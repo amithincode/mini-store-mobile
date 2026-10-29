@@ -5,10 +5,14 @@ import 'package:mini_store_app/features/cart/domain/entities/cart_item.dart';
 import 'package:mini_store_app/features/cart/domain/failures/cart_storage_exception.dart';
 import 'package:mini_store_app/features/cart/domain/repositories/cart_repository.dart';
 import 'package:mini_store_app/features/cart/presentation/cubit/cart_cubit.dart';
+import 'package:mini_store_app/features/orders/domain/entities/order.dart';
+import 'package:mini_store_app/features/orders/domain/failures/order_storage_exception.dart';
+import 'package:mini_store_app/features/orders/domain/repositories/order_repository.dart';
 import 'package:mini_store_app/features/orders/domain/services/order_number_generator.dart';
 import 'package:mini_store_app/features/orders/domain/usecases/place_order_use_case.dart';
 import 'package:mini_store_app/features/orders/presentation/cubit/checkout_cubit.dart';
 import 'package:mini_store_app/features/orders/presentation/cubit/checkout_state.dart';
+import 'package:mini_store_app/features/orders/presentation/cubit/order_history_cubit.dart';
 
 import '../../../products/product_fixtures.dart';
 
@@ -30,6 +34,22 @@ class _FakeCartRepository implements CartRepository {
   }
 }
 
+class _FakeOrderRepository implements OrderRepository {
+  List<Order> stored = const <Order>[];
+  bool failSave = false;
+
+  @override
+  Future<List<Order>> loadOrders() async => stored;
+
+  @override
+  Future<void> saveOrders(List<Order> orders) async {
+    if (failSave) {
+      throw const OrderStorageException();
+    }
+    stored = orders;
+  }
+}
+
 class _SequenceGenerator implements OrderNumberGenerator {
   _SequenceGenerator(this._numbers);
 
@@ -40,7 +60,15 @@ class _SequenceGenerator implements OrderNumberGenerator {
   String next() => _numbers[_index++];
 }
 
-Future<({CartCubit cart, CheckoutCubit checkout, _FakeCartRepository repo})>
+Future<
+  ({
+    CartCubit cart,
+    CheckoutCubit checkout,
+    _FakeCartRepository repo,
+    _FakeOrderRepository orderRepo,
+    OrderHistoryCubit history,
+  })
+>
 _setUp({
   Duration delay = Duration.zero,
   List<String> numbers = const ['MS-20481'],
@@ -48,14 +76,24 @@ _setUp({
   final repo = _FakeCartRepository();
   final cart = CartCubit(repo);
   await cart.loadCart();
+  final orderRepo = _FakeOrderRepository();
+  final history = OrderHistoryCubit(orderRepo);
+  await history.loadOrders();
   final checkout = CheckoutCubit(
     cart: cart,
     placeOrder: PlaceOrderUseCase(
       _SequenceGenerator(numbers),
       processingDelay: delay,
     ),
+    history: history,
   );
-  return (cart: cart, checkout: checkout, repo: repo);
+  return (
+    cart: cart,
+    checkout: checkout,
+    repo: repo,
+    orderRepo: orderRepo,
+    history: history,
+  );
 }
 
 void main() {
@@ -90,10 +128,30 @@ void main() {
       expect(setup.cart.state.items, isEmpty);
       expect(setup.cart.state.itemCount, 0);
       expect(setup.repo.stored, isEmpty);
+      expect(setup.orderRepo.stored, hasLength(1));
+      expect(setup.orderRepo.stored.single.orderNumber, 'MS-20481');
+      expect(setup.orderRepo.stored.single.items, hasLength(2));
+      expect(setup.orderRepo.stored.single.itemCount, 3);
       await setup.checkout.close();
       await setup.cart.close();
     },
   );
+
+  test('a failed order history write keeps the cart intact', () async {
+    final setup = await _setUp();
+    await setup.cart.addItem(testProduct(1));
+    setup.orderRepo.failSave = true;
+
+    final result = await setup.checkout.confirmOrder();
+
+    expect(result, isFalse);
+    expect(setup.checkout.state, isA<CheckoutFailure>());
+    expect(setup.checkout.completedOrder, isNull);
+    expect(setup.cart.state.items, hasLength(1));
+    expect(setup.orderRepo.stored, isEmpty);
+    await setup.checkout.close();
+    await setup.cart.close();
+  });
 
   test('reports processing before success', () async {
     final setup = await _setUp(delay: const Duration(milliseconds: 30));

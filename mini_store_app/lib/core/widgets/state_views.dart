@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
+import '../theme/app_palette.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_typography.dart';
 
@@ -23,10 +24,11 @@ class AppEmptyView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     return _StateContainer(
       icon: icon,
-      iconBackground: AppColors.primaryContainer,
-      iconColor: AppColors.primary,
+      iconBackground: palette.primaryContainer,
+      iconColor: palette.onPrimaryContainer,
       title: title,
       message: message,
       action: actionLabel != null && onAction != null
@@ -88,7 +90,12 @@ class AppLoadingView extends StatelessWidget {
               child: CircularProgressIndicator(strokeWidth: 3),
             ),
             const SizedBox(height: AppSpacing.md),
-            Text(message, style: AppTypography.bodySmall),
+            Text(
+              message,
+              style: AppTypography.bodySmall.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       ),
@@ -115,6 +122,7 @@ class _StateContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(
@@ -122,9 +130,9 @@ class _StateContainer extends StatelessWidget {
         vertical: AppSpacing.xl,
       ),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: palette.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: palette.border),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -151,7 +159,9 @@ class _StateContainer extends StatelessWidget {
             Text(
               message!,
               textAlign: TextAlign.center,
-              style: AppTypography.bodySmall,
+              style: AppTypography.bodySmall.copyWith(
+                color: palette.textSecondary,
+              ),
             ),
           ],
           if (action != null) ...[

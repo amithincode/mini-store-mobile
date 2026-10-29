@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 
 /// Store search input with a clear affordance.
 ///
@@ -13,6 +13,7 @@ class StoreSearchField extends StatelessWidget {
     required this.onChanged,
     required this.onClear,
     this.onSubmitted,
+    this.focusNode,
     this.maxWidth = double.infinity,
   });
 
@@ -20,6 +21,7 @@ class StoreSearchField extends StatelessWidget {
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
   final ValueChanged<String>? onSubmitted;
+  final FocusNode? focusNode;
   final double maxWidth;
 
   @override
@@ -30,6 +32,7 @@ class StoreSearchField extends StatelessWidget {
         width: maxWidth,
         child: TextField(
           controller: controller,
+          focusNode: focusNode,
           onChanged: onChanged,
           onSubmitted: onSubmitted,
           textInputAction: TextInputAction.search,
@@ -46,9 +49,9 @@ class StoreSearchField extends StatelessWidget {
                 return IconButton(
                   onPressed: onClear,
                   tooltip: 'Clear search',
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.close_rounded,
-                    color: AppColors.textSecondary,
+                    color: context.palette.textSecondary,
                     size: 20,
                   ),
                 );

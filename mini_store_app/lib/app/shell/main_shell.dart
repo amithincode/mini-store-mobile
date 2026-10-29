@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../core/theme/app_colors.dart';
+import '../../core/theme/app_palette.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_app_bar.dart';
 import '../../core/widgets/app_scaffold.dart';
@@ -146,8 +146,8 @@ class _MainShellState extends State<MainShell> {
                     ? NavigationBar(
                         selectedIndex: _tabs.index,
                         onDestinationSelected: _selectTab,
-                        backgroundColor: AppColors.surface,
-                        indicatorColor: AppColors.primaryContainer,
+                        backgroundColor: context.palette.surface,
+                        indicatorColor: context.palette.primaryContainer,
                         labelBehavior:
                             NavigationDestinationLabelBehavior.alwaysShow,
                         destinations: [

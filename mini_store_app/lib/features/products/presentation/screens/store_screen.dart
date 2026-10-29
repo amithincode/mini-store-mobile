@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/app_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
@@ -22,12 +23,6 @@ import '../widgets/product_section_header.dart';
 import '../widgets/store_promo_banner.dart';
 import '../widgets/store_search_field.dart';
 
-/// Home storefront.
-///
-/// [createCubit] is injected by the router (and by tests) so the screen never
-/// reaches into the service locator. The page itself stays stateless; only the
-/// search controller, scroll bookkeeping, and bottom-bar visibility live in a
-/// small stateful child.
 class StoreScreen extends StatelessWidget {
   const StoreScreen({super.key, required this.createCubit, this.bottomBar});
 
@@ -54,17 +49,78 @@ class _StoreView extends StatefulWidget {
   State<_StoreView> createState() => _StoreViewState();
 }
 
-class _StoreViewState extends State<_StoreView> {
+class _StoreViewState extends State<_StoreView>
+    with SingleTickerProviderStateMixin {
   static const double _loadMoreThreshold = 420;
+  static const double _collapseOffsetThreshold = 40;
+  static const double _scrollDeltaThreshold = 6;
+  static const double _expandedToolbarHeight = 68;
+  static const double _collapsedToolbarHeight = AppAppBar.defaultToolbarHeight;
 
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+
+  /// 0 keeps the search row open, 1 tucks it into an app bar action.
+  late final AnimationController _searchBarController;
+
+  double _lastScrollOffset = 0;
+
+  bool _searchPinnedOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchBarController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..addStatusListener(_onSearchBarStatusChanged);
+  }
 
   @override
   void dispose() {
+    _searchBarController
+      ..removeStatusListener(_onSearchBarStatusChanged)
+      ..dispose();
+    _searchFocusNode.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _onSearchBarStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
+      _scheduleViewportCheck();
+    }
+  }
+
+  void _setSearchCollapsed(bool collapsed) {
+    if (collapsed) {
+      if (_searchBarController.isCompleted ||
+          _searchBarController.status == AnimationStatus.forward) {
+        return;
+      }
+      _searchFocusNode.unfocus();
+      _searchBarController.forward();
+      return;
+    }
+
+    if (_searchBarController.isDismissed ||
+        _searchBarController.status == AnimationStatus.reverse) {
+      return;
+    }
+    _searchBarController.reverse();
+  }
+
+  void _openSearch() {
+    _searchPinnedOpen = true;
+    _setSearchCollapsed(false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _searchFocusNode.requestFocus();
+      }
+    });
   }
 
   void _showPlaceholder(String message) {
@@ -80,6 +136,8 @@ class _StoreViewState extends State<_StoreView> {
   }
 
   void _refreshProducts() {
+    _searchPinnedOpen = false;
+    _setSearchCollapsed(false);
     if (_scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
@@ -99,6 +157,26 @@ class _StoreViewState extends State<_StoreView> {
   bool _onScroll(ScrollNotification notification) {
     if (notification.depth != 0 || notification.metrics.axis != Axis.vertical) {
       return false;
+    }
+
+    if (notification is ScrollStartNotification) {
+      _lastScrollOffset = notification.metrics.pixels;
+      _searchPinnedOpen = false;
+    } else if (notification is ScrollUpdateNotification) {
+      final offset = notification.metrics.pixels;
+      final delta = offset - _lastScrollOffset;
+      _lastScrollOffset = offset;
+
+      if (offset <= 0 || delta < -_scrollDeltaThreshold) {
+        _setSearchCollapsed(false);
+      } else if (delta > _scrollDeltaThreshold &&
+          offset > _collapseOffsetThreshold &&
+          !_searchPinnedOpen) {
+        _setSearchCollapsed(true);
+      }
+    } else if (notification is ScrollEndNotification &&
+        notification.metrics.pixels <= 0) {
+      _setSearchCollapsed(false);
     }
 
     if (notification.metrics.extentAfter < _loadMoreThreshold) {
@@ -142,92 +220,123 @@ class _StoreViewState extends State<_StoreView> {
     final textScale = MediaQuery.textScalerOf(context).scale(1);
     final bannerHeight =
         metrics.bannerHeight + (textScale - 1).clamp(0.0, 2.0) * 110;
+    final searchRowHeight = 72 + (textScale - 1).clamp(0.0, 2.0) * 24;
 
-    return AppScaffold(
-      appBar: AppAppBar(
-        title: 'Mini Store',
-        subtitle: 'Everyday essentials',
-        //  gradient: AppColors.primaryGradient,
-        backgroundColor: AppColors.primary.withValues(alpha: 15),
-        foregroundColor: Colors.white,
-        toolbarHeight: 68,
-        showDivider: false,
+    // Built once and handed to the animation builder as its child so scrolling
+    // the app bar open or closed never rebuilds the product list.
+    final body = BlocListener<ProductListCubit, ProductListState>(
+      listenWhen: (previous, current) => previous.query != current.query,
+      listener: (context, state) {
+        widget.bottomBar?.show();
+        _setSearchCollapsed(false);
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+          }
+        });
+      },
+      child: BlocBuilder<ProductListCubit, ProductListState>(
+        builder: (context, state) {
+          _scheduleViewportCheck();
 
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
-        actions: [
-          if (kIsWeb || metrics.isDesktop)
-            _HomeAppBarAction(
-              tooltip: 'Refresh products',
-              onPressed: _refreshProducts,
-              icon: Icons.refresh_rounded,
-            ),
-          _HomeAppBarAction(
-            tooltip: 'Notifications',
-            onPressed: _openNotifications,
-            icon: Icons.notifications_none_rounded,
-          ),
-        ],
-      ),
-      body: BlocListener<ProductListCubit, ProductListState>(
-        listenWhen: (previous, current) => previous.query != current.query,
-        listener: (context, state) {
-          widget.bottomBar?.show();
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted && _scrollController.hasClients) {
-              _scrollController.jumpTo(0);
-            }
-          });
-        },
-        child: BlocBuilder<ProductListCubit, ProductListState>(
-          builder: (context, state) {
-            _scheduleViewportCheck();
-
-            return BottomBarAutoHide(
-              controller: widget.bottomBar,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: _onScroll,
-                child: RefreshIndicator(
-                  onRefresh: context.read<ProductListCubit>().refresh,
-                  child: CustomScrollView(
-                    key: const ValueKey('store-scroll'),
-                    controller: _scrollController,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    keyboardDismissBehavior:
-                        ScrollViewKeyboardDismissBehavior.onDrag,
-                    slivers: [
-                      SliverPadding(
-                        padding: EdgeInsets.only(
-                          top: metrics.isMobile ? AppSpacing.lg : AppSpacing.xl,
-                        ),
-                        sliver: SliverToBoxAdapter(
-                          child: _StoreHeader(
-                            searchController: _searchController,
-                            searchMaxWidth: metrics.searchMaxWidth,
-                            bannerHeight: bannerHeight,
-                            state: state,
-                            onSearchChanged: context
-                                .read<ProductListCubit>()
-                                .search,
-                            onSearchSubmitted: context
-                                .read<ProductListCubit>()
-                                .submitSearch,
-                            onClearSearch: _clearSearch,
-                            onRefresh: context.read<ProductListCubit>().refresh,
-                            onShopNow: () => _showPlaceholder(
-                              'Promotions are coming in a later phase.',
-                            ),
+          return BottomBarAutoHide(
+            controller: widget.bottomBar,
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _onScroll,
+              child: RefreshIndicator(
+                onRefresh: context.read<ProductListCubit>().refresh,
+                child: CustomScrollView(
+                  key: const ValueKey('store-scroll'),
+                  controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  slivers: [
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        top: metrics.isMobile ? AppSpacing.lg : AppSpacing.xl,
+                      ),
+                      sliver: SliverToBoxAdapter(
+                        child: _StoreHeader(
+                          bannerHeight: bannerHeight,
+                          state: state,
+                          onRefresh: context.read<ProductListCubit>().refresh,
+                          onShopNow: () => _showPlaceholder(
+                            'Promotions are coming in a later phase.',
                           ),
                         ),
                       ),
-                      ..._contentSlivers(context, state),
-                    ],
-                  ),
+                    ),
+                    ..._contentSlivers(context, state),
+                  ],
                 ),
               ),
-            );
-          },
-        ),
+            ),
+          );
+        },
       ),
+    );
+
+    return AnimatedBuilder(
+      animation: _searchBarController,
+      child: body,
+      builder: (context, child) {
+        final collapse = Curves.easeOutCubic.transform(
+          _searchBarController.value,
+        );
+        final toolbarHeight =
+            _expandedToolbarHeight +
+            (_collapsedToolbarHeight - _expandedToolbarHeight) * collapse;
+        final searchHeight = searchRowHeight * (1 - collapse);
+        final showSearchRow = collapse < 0.999;
+        final showSearchAction = collapse > 0.2;
+
+        return AppScaffold(
+          appBar: AppAppBar(
+            title: 'Mini Store',
+            subtitle: 'Everyday essentials',
+            backgroundColor: AppColors.primaryGradient.colors.first,
+            foregroundColor: Colors.white,
+            toolbarHeight: toolbarHeight,
+            showDivider: false,
+            borderRadius: const BorderRadius.vertical(
+              bottom: Radius.circular(12),
+            ),
+            bottom: showSearchRow
+                ? _HomeSearchBar(
+                    height: searchHeight,
+                    expandedHeight: searchRowHeight,
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    maxWidth: metrics.searchMaxWidth,
+                    onChanged: context.read<ProductListCubit>().search,
+                    onSubmitted: context.read<ProductListCubit>().submitSearch,
+                    onClear: _clearSearch,
+                  )
+                : null,
+            actions: [
+              if (kIsWeb || metrics.isDesktop)
+                _HomeAppBarAction(
+                  tooltip: 'Refresh products',
+                  onPressed: _refreshProducts,
+                  icon: Icons.refresh_rounded,
+                ),
+              if (showSearchAction)
+                _HomeAppBarAction(
+                  tooltip: 'Search products',
+                  onPressed: _openSearch,
+                  icon: Icons.search_rounded,
+                ),
+              _HomeAppBarAction(
+                tooltip: 'Notifications',
+                onPressed: _openNotifications,
+                icon: Icons.notifications_none_rounded,
+              ),
+            ],
+          ),
+          body: child!,
+        );
+      },
     );
   }
 
@@ -366,26 +475,89 @@ class _HomeAppBarAction extends StatelessWidget {
   }
 }
 
+class _HomeSearchBar extends StatelessWidget implements PreferredSizeWidget {
+  const _HomeSearchBar({
+    required this.height,
+    required this.expandedHeight,
+    required this.controller,
+    required this.focusNode,
+    required this.maxWidth,
+    required this.onChanged,
+    required this.onSubmitted,
+    required this.onClear,
+  });
+
+  final double height;
+  final double expandedHeight;
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final double maxWidth;
+  final ValueChanged<String> onChanged;
+  final ValueChanged<String> onSubmitted;
+  final VoidCallback onClear;
+
+  @override
+  Size get preferredSize => Size.fromHeight(height);
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: height,
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: expandedHeight,
+          maxHeight: expandedHeight,
+          child: SizedBox(
+            height: expandedHeight,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final metrics = ResponsiveMetrics.fromWidth(
+                  constraints.maxWidth,
+                );
+
+                return Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: AppConstants.maxContentWidth,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: metrics.horizontalPadding,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: StoreSearchField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          maxWidth: maxWidth,
+                          onChanged: onChanged,
+                          onSubmitted: onSubmitted,
+                          onClear: onClear,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StoreHeader extends StatelessWidget {
   const _StoreHeader({
-    required this.searchController,
-    required this.searchMaxWidth,
     required this.bannerHeight,
     required this.state,
-    required this.onSearchChanged,
-    required this.onSearchSubmitted,
-    required this.onClearSearch,
     required this.onRefresh,
     required this.onShopNow,
   });
 
-  final TextEditingController searchController;
-  final double searchMaxWidth;
   final double bannerHeight;
   final ProductListState state;
-  final ValueChanged<String> onSearchChanged;
-  final ValueChanged<String> onSearchSubmitted;
-  final VoidCallback onClearSearch;
   final Future<void> Function() onRefresh;
   final VoidCallback onShopNow;
 
@@ -398,17 +570,9 @@ class _StoreHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        StoreSearchField(
-          controller: searchController,
-          maxWidth: searchMaxWidth,
-          onChanged: onSearchChanged,
-          onSubmitted: onSearchSubmitted,
-          onClear: onClearSearch,
-        ),
-        const SizedBox(height: AppSpacing.lg),
         if (state.query.isEmpty) ...[
-          StorePromoBanner(height: bannerHeight, onShopNow: onShopNow),
-          const SizedBox(height: AppSpacing.xl),
+          StorePromoBanner(height: bannerHeight - 15, onShopNow: onShopNow),
+          const SizedBox(height: AppSpacing.md),
         ],
         if (loaded?.notice != null) ...[
           ProductListNoticeBanner(notice: loaded!.notice!, onRetry: onRefresh),

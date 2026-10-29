@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../products/data/product_error_mapper.dart';
 import '../../../products/domain/failures/product_failure.dart';
 import '../../domain/entities/product_category.dart';
@@ -14,19 +15,18 @@ abstract interface class CategoryRemoteDataSource {
   Future<String?> fetchPreviewImage(String slug);
 }
 
-/// DummyJSON category endpoint using the shared authenticated Dio client.
+/// Category endpoints configured through `.env` using the shared authenticated
+/// Dio client.
 class DioCategoryRemoteDataSource implements CategoryRemoteDataSource {
-  DioCategoryRemoteDataSource(this._dio);
-
-  static const String categoriesPath = '/products/categories';
-  static const String categoryProductsPath = '/products/category';
+  DioCategoryRemoteDataSource(this._dio, this._config);
 
   final Dio _dio;
+  final AppConfig _config;
 
   @override
   Future<List<ProductCategory>> fetchCategories() async {
     try {
-      final response = await _dio.get<Object?>(categoriesPath);
+      final response = await _dio.get<Object?>(_config.categoriesPath);
       return ProductCategoryModel.listFromJson(_decoded(response.data));
     } on DioException catch (exception) {
       throw mapProductDioException(exception);
@@ -46,7 +46,7 @@ class DioCategoryRemoteDataSource implements CategoryRemoteDataSource {
 
     try {
       final response = await _dio.get<Object?>(
-        '$categoryProductsPath/${Uri.encodeComponent(trimmed)}',
+        _config.categoryProductsPathFor(trimmed),
         queryParameters: const <String, dynamic>{'limit': 1},
       );
       return _firstImage(_decoded(response.data));

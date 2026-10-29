@@ -33,4 +33,21 @@ abstract final class AppColors {
 
   /// Neutral tint used behind product photography.
   static const Color imageBackground = Color(0xFFF3F4F6);
+
+  // Dark theme neutrals. Brand colours (primary, accent, success, error) stay
+  // the same in both themes; only surfaces, text, borders, and tinted
+  // containers need a dark counterpart.
+  static const Color darkBackground = Color(0xFF0B1220);
+  static const Color darkSurface = Color(0xFF111827);
+  static const Color darkSurfaceElevated = Color(0xFF1F2937);
+  static const Color darkTextPrimary = Color(0xFFF9FAFB);
+  static const Color darkTextSecondary = Color(0xFF9CA3AF);
+  static const Color darkBorder = Color(0xFF374151);
+  static const Color darkImageBackground = Color(0xFF1F2937);
+  static const Color darkPrimaryContainer = Color(0xFF1E3A8A);
+  static const Color darkOnPrimaryContainer = Color(0xFFDBEAFE);
+  static const Color darkAccentContainer = Color(0xFF78350F);
+  static const Color darkOnAccentContainer = Color(0xFFFEF3C7);
+  static const Color darkSuccessContainer = Color(0xFF14532D);
+  static const Color darkOnSuccessContainer = Color(0xFFDCFCE7);
 }

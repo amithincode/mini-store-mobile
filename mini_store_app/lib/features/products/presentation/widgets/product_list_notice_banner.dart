@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../cubit/product_list_state.dart';
@@ -18,11 +19,12 @@ class ProductListNoticeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
     final isSession = notice.type == ProductListNoticeType.sessionExpired;
     final background = isSession
         ? AppColors.error.withValues(alpha: 0.08)
-        : AppColors.accentContainer;
-    final foreground = isSession ? AppColors.error : AppColors.textPrimary;
+        : palette.accentContainer;
+    final foreground = isSession ? AppColors.error : palette.onAccentContainer;
     final icon = switch (notice.type) {
       ProductListNoticeType.offlineShowingSaved => Icons.cloud_off_rounded,
       ProductListNoticeType.refreshFailed => Icons.sync_problem_rounded,
@@ -55,8 +57,9 @@ class ProductListNoticeBanner extends StatelessWidget {
             TextButton(
               onPressed: onRetry,
               style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryDark,
-                visualDensity: VisualDensity.compact,
+                foregroundColor: isSession
+                    ? AppColors.error
+                    : palette.onAccentContainer,
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
               ),
               child: const Text('Retry'),

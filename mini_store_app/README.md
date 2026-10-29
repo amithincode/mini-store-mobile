@@ -23,6 +23,13 @@ Create a `.env` file in the project root before the first run:
 
 ```env
 API_BASE_URL=https://dummyjson.com
+API_AUTH_LOGIN_PATH=/auth/login
+API_AUTH_REFRESH_PATH=/auth/refresh
+API_PRODUCTS_PATH=/products
+API_PRODUCTS_SEARCH_PATH=/products/search
+API_PRODUCTS_DETAIL_PATH=/products/{id}
+API_CATEGORIES_PATH=/products/categories
+API_CATEGORY_PRODUCTS_PATH=/products/category/{slug}
 ```
 
 `.env` is declared as a Flutter asset because `flutter_dotenv` reads it from the
@@ -31,7 +38,11 @@ own `.env`. When the file is missing or invalid, the app shows a startup error
 screen instead of silently falling back.
 
 `API_BASE_URL` is validated at startup and configures login, refresh, and
-protected API requests.
+protected API requests. Every endpoint is also read from `.env`: change a path
+there (for example `API_PRODUCTS_DETAIL_PATH`) and the app uses the new value
+without any code change. Detail and category paths must keep their `{id}` and
+`{slug}` placeholders; a missing or malformed value fails fast with a readable
+configuration error.
 
 ## Manual test account
 
@@ -318,6 +329,8 @@ Chrome DevTools, but `flutter run` forwards it to the terminal.
 - Protected four-tab shell: Home, Categories, Cart, and Account
 - Account profile from saved data with graceful placeholders, plus confirmed
   logout
+- Full light and dark themes with a persisted Light / Dark / System preference in
+  Account
 - Product catalogue from `/products` with paginated infinite scroll and
   pull-to-refresh
 - Debounced `/products/search` with stale-response protection, Enter to submit,
@@ -337,8 +350,9 @@ Chrome DevTools, but `flutter run` forwards it to the terminal.
   scrolling down and returns when scrolling stops
 - Single blue Home app bar with a notifications shortcut and a matching
   empty-state notifications screen
-- System chrome matched to the app: transparent status bar with readable icons
-  and a light surface system navigation bar on every screen
+- System chrome matched to the active theme: transparent status bar with readable
+  icons and a surface system navigation bar on every screen
+- All API base URL and endpoint paths read from `.env`
 - Debug API logs with redacted credentials
 - Preserved responsive storefront, shared `AppScaffold`/`AppAppBar`, bundled
   Poppins, and Material 3 theme
@@ -350,7 +364,7 @@ Chrome DevTools, but `flutter run` forwards it to the terminal.
 lib/
 ├── main.dart                        # dotenv, DI, app, deferred session restore
 ├── app/
-│   ├── app.dart                     # MaterialApp.router and DevicePreview
+│   ├── app.dart                     # MaterialApp.router, theme modes, DevicePreview
 │   ├── startup_error_app.dart
 │   ├── di/injector.dart             # auth, catalogue, categories, cart, orders, router
 │   ├── router/app_router.dart       # splash/login/shell/details/category/notifications/success
@@ -360,7 +374,7 @@ lib/
 │   ├── config/                      # Environment validation
 │   ├── network/                     # Dio transport and debug API logging
 │   ├── storage/                     # shared_preferences wrapper
-│   ├── theme/                       # Colors, spacing, typography, theme, system chrome
+│   ├── theme/                       # Light/dark themes, palette, typography, chrome, ThemeCubit
 │   ├── utils/                       # Responsive metrics and formatters
 │   └── widgets/                     # Scaffold, app bar, images, auto-hide nav, state views
 └── features/
@@ -445,6 +459,24 @@ Content is capped at 1200 px and centred on large screens. Banner and card
 heights grow with the text scaler for accessibility. The bottom navigation bar
 is used at every width and auto-hides while Home or Categories scroll down.
 
+## Appearance
+
+The app ships a complete light and dark Material 3 theme. Brand colours
+(primary `#2563EB`, accent `#F59E0B`, success, and error) stay identical in both
+modes; neutrals, surfaces, borders, and tinted containers switch to dark values
+(`#0B1220` background, `#111827` surface, `#F9FAFB` text, `#9CA3AF` secondary
+text, `#374151` border).
+
+- The Account tab has an Appearance card with Light, Dark, and System options.
+- System is the default on first launch and follows the device setting.
+- The choice is persisted under `mini_store.theme_mode.v1` and restored before
+  the first frame on the next launch.
+- Status-bar icons and the Android navigation bar follow the active brightness,
+  including the coloured Home, detail, and success bars.
+- `AppTheme.light` / `AppTheme.dark` build the same component styles per
+  brightness, and an `AppPalette` theme extension supplies semantic neutrals
+  (`context.palette`) so screens never need hardcoded light-theme colours.
+
 ## Device preview
 
 The bootstrap currently passes `enableDevicePreview: false`; the debug/profile
@@ -500,8 +532,9 @@ API. It covers:
 - shared system chrome values, app-bar overlay brightness, and bottom-bar
   hide/restore timing
 
-Latest verification (Flutter 3.41.7 / Dart 3.11.5): `flutter analyze` reports no
-issues and `flutter test` passes all 240 tests.
+Latest verification (Flutter 3.41.7 / Dart 3.11.5): `dart format lib test`
+reports no changes, `flutter analyze` reports no issues, and `flutter test`
+passes all 243 tests.
 
 ## Current scope
 
@@ -521,9 +554,11 @@ Implemented:
 - Local dummy checkout with confirmation, processing state, order number, and
   success summary
 - Chunked per-query product cache with cache-first rendering and offline notices
+- Complete light and dark themes with a persisted Appearance preference
+- All API endpoints configurable through `.env`
 
 Deliberately excluded:
 
 - Real payments, order history, and order APIs
 - Quick add-to-cart actions on product cards
-- New authentication flows, profile editing, and dark theme
+- New authentication flows and profile editing

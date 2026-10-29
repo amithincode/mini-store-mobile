@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mini_store_app/app/app.dart';
 import 'package:mini_store_app/app/router/app_router.dart';
+import 'package:mini_store_app/core/theme/theme_cubit.dart';
 import 'package:mini_store_app/features/auth/domain/entities/user.dart';
 import 'package:mini_store_app/features/auth/presentation/cubit/auth_state.dart';
 
@@ -36,8 +37,14 @@ Future<void> _pumpApp(
     ),
   );
   addTearDown(router.dispose);
+  final themeCubit = ThemeCubit.inMemory();
+  addTearDown(themeCubit.close);
   await tester.pumpWidget(
-    MiniStoreApp(router: router, enableDevicePreview: false),
+    MiniStoreApp(
+      router: router,
+      themeCubit: themeCubit,
+      enableDevicePreview: false,
+    ),
   );
   await tester.pump();
 }
@@ -93,6 +100,8 @@ void main() {
     expect(find.text('Emily Johnson'), findsOneWidget);
     expect(find.text('@emilys'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('account-logout')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('account-logout')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('account-logout-confirm')));

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_typography.dart';
 
@@ -20,6 +21,7 @@ class ProductPaginationFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (failureMessage != null) {
+      final palette = context.palette;
       return Container(
         key: const ValueKey('pagination-error'),
         margin: const EdgeInsets.only(top: AppSpacing.md),
@@ -28,9 +30,9 @@ class ProductPaginationFooter extends StatelessWidget {
           vertical: AppSpacing.xs,
         ),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: palette.surface,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.border),
+          border: Border.all(color: palette.border),
         ),
         child: Row(
           children: [
@@ -41,15 +43,19 @@ class ProductPaginationFooter extends StatelessWidget {
             ),
             const SizedBox(width: AppSpacing.xs),
             Expanded(
-              child: Text(failureMessage!, style: AppTypography.bodySmall),
+              child: Text(
+                failureMessage!,
+                style: AppTypography.bodySmall.copyWith(
+                  color: palette.textPrimary,
+                ),
+              ),
             ),
             if (onRetry != null) ...[
               const SizedBox(width: AppSpacing.xs),
               TextButton(
                 onPressed: onRetry,
                 style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryDark,
-                  visualDensity: VisualDensity.compact,
+                  foregroundColor: Theme.of(context).colorScheme.primary,
                 ),
                 child: const Text('Try again'),
               ),

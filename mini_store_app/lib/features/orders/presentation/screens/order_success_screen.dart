@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_system_ui.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -11,7 +12,8 @@ import '../../domain/entities/order.dart';
 /// Confirmation screen for the locally completed dummy order.
 ///
 /// The whole page sits on the success green so the moment reads as a single,
-/// celebratory state. All summary data stays on a white card for contrast.
+/// celebratory state. The summary card follows the active theme so the numbers
+/// stay readable in dark mode.
 class OrderSuccessScreen extends StatelessWidget {
   const OrderSuccessScreen({
     super.key,
@@ -24,8 +26,13 @@ class OrderSuccessScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: AppSystemUi.forBar(AppColors.successDark),
+      value: AppSystemUi.forBar(
+        AppColors.successDark,
+        brightness: Theme.of(context).brightness,
+      ),
       child: Scaffold(
         backgroundColor: AppColors.success,
         body: Stack(
@@ -62,7 +69,7 @@ class OrderSuccessScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(AppSpacing.lg),
                           decoration: BoxDecoration(
-                            color: AppColors.surface,
+                            color: palette.surface,
                             borderRadius: BorderRadius.circular(20),
                             boxShadow: [
                               BoxShadow(
@@ -96,14 +103,14 @@ class OrderSuccessScreen extends StatelessWidget {
                                 padding: EdgeInsets.symmetric(
                                   vertical: AppSpacing.sm,
                                 ),
-                                child: Divider(color: AppColors.border),
+                                child: Divider(),
                               ),
                               _SummaryRow(
                                 label: 'Total paid',
                                 value: formatPrice(order.totalPaid),
                                 valueKey: const ValueKey('order-success-total'),
                                 emphasize: true,
-                                accent: AppColors.successDark,
+                                accent: palette.success,
                               ),
                             ],
                           ),
@@ -125,7 +132,7 @@ class OrderSuccessScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: AppSpacing.sm),
                         Text(
-                          'A receipt is saved with your order details.',
+                          'This order is saved in My orders on this device.',
                           textAlign: TextAlign.center,
                           style: AppTypography.bodySmall.copyWith(
                             color: AppColors.onSuccess.withValues(alpha: 0.7),
@@ -354,6 +361,8 @@ class _SummaryRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = context.palette;
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -361,7 +370,7 @@ class _SummaryRow extends StatelessWidget {
           child: Text(
             label,
             style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
+              color: palette.textSecondary,
             ),
           ),
         ),
@@ -374,9 +383,9 @@ class _SummaryRow extends StatelessWidget {
             style: emphasize
                 ? AppTypography.titleMedium.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: accent ?? AppColors.textPrimary,
+                    color: accent ?? palette.textPrimary,
                   )
-                : AppTypography.bodyMedium,
+                : AppTypography.bodyMedium.copyWith(color: palette.textPrimary),
           ),
         ),
       ],
