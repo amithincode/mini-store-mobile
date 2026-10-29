@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:mini_store_app/features/products/data/models/product_model.dart';
+
 import '../../../../core/storage/app_storage.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
@@ -10,6 +11,9 @@ import '../../../../core/widgets/app_app_bar.dart';
 import '../../../../core/widgets/app_scaffold.dart';
 import '../../../../core/widgets/state_views.dart';
 import '../../../cart/presentation/widgets/cart_icon_button.dart';
+import '../../../cart/presentation/cubit/cart_cubit.dart';
+import '../../../cart/presentation/cubit/cart_state.dart';
+import '../../../../app/router/app_router.dart';
 import '../cubit/product_list_cubit.dart';
 import '../cubit/product_list_state.dart';
 import '../widgets/pagination_footer.dart';
@@ -138,12 +142,10 @@ class _StoreViewState extends State<_StoreView> {
               onPressed: _refreshProducts,
               icon: const Icon(Icons.refresh_rounded),
             ),
-          CartIconButton(
+          _StoreCartButton(
             onPressed:
                 widget.onCartTap ??
-                () => _showPlaceholder(
-                  'Cart features are coming in a later phase.',
-                ),
+                () => _showPlaceholder('Cart is available from the Cart tab.'),
           ),
         ],
       ),
@@ -266,10 +268,18 @@ class _StoreViewState extends State<_StoreView> {
           padding: const EdgeInsets.only(top: AppSpacing.xs),
           sliver: ProductSliverGrid(
             products: state.products,
-            onProductTap: (product) => _showPlaceholder(
-              'Product details for ${product.title} are coming in a later '
-              'phase.',
-            ),
+            onProductTap: (product) {
+              // The production shell supplies GoRouter. The graceful fallback
+              // keeps this reusable screen usable in isolated previews/tests.
+              if (GoRouter.maybeOf(context) == null) {
+                _showPlaceholder('Product details for ${product.title} are coming in a later phase.');
+                return;
+              }
+              context.pushNamed(
+                AppRoutes.productDetailName,
+                pathParameters: {'id': product.id.toString()},
+              );
+            },
           ),
         ),
         SliverPadding(
@@ -299,6 +309,35 @@ class _StoreViewState extends State<_StoreView> {
     }
 
     return "Couldn't load more products. Try again.";
+  }
+}
+
+class _StoreCartButton extends StatelessWidget {
+  const _StoreCartButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    // Keeping this fallback makes the reusable StoreScreen independently
+    // testable; the app shell always supplies the shared CartCubit.
+    if (_findCartCubit(context) == null) {
+      return CartIconButton(onPressed: onPressed);
+    }
+    return BlocBuilder<CartCubit, CartState>(
+      builder: (context, cart) => CartIconButton(
+        badgeCount: cart.itemCount,
+        onPressed: onPressed,
+      ),
+    );
+  }
+}
+
+CartCubit? _findCartCubit(BuildContext context) {
+  try {
+    return BlocProvider.of<CartCubit>(context, listen: false);
+  } catch (_) {
+    return null;
   }
 }
 

@@ -27,6 +27,16 @@ import '../../features/products/domain/usecases/get_cached_products_use_case.dar
 import '../../features/products/domain/usecases/get_products_use_case.dart';
 import '../../features/products/domain/usecases/search_products_use_case.dart';
 import '../../features/products/presentation/cubit/product_list_cubit.dart';
+import '../../features/cart/data/datasources/cart_local_data_source.dart';
+import '../../features/cart/data/repositories/cart_repository_impl.dart';
+import '../../features/cart/domain/repositories/cart_repository.dart';
+import '../../features/cart/presentation/cubit/cart_cubit.dart';
+import '../../features/product_details/data/datasources/product_detail_local_data_source.dart';
+import '../../features/product_details/data/datasources/product_detail_remote_data_source.dart';
+import '../../features/product_details/data/repositories/product_detail_repository_impl.dart';
+import '../../features/product_details/domain/repositories/product_detail_repository.dart';
+import '../../features/product_details/domain/usecases/get_product_detail_use_case.dart';
+import '../../features/product_details/presentation/cubit/product_detail_cubit.dart';
 import '../router/app_router.dart';
 
 /// Central service locator. Only bootstrap code and tests should touch this;
@@ -189,11 +199,55 @@ Future<void> configureDependencies({required AppConfig config}) async {
     );
   }
 
+  if (!getIt.isRegistered<CartLocalDataSource>()) {
+    getIt.registerLazySingleton<CartLocalDataSource>(
+      () => SharedPreferencesCartLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+  if (!getIt.isRegistered<CartRepository>()) {
+    getIt.registerLazySingleton<CartRepository>(
+      () => CartRepositoryImpl(getIt<CartLocalDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<CartCubit>()) {
+    getIt.registerLazySingleton<CartCubit>(
+      () => CartCubit(getIt<CartRepository>())..loadCart(),
+      dispose: (cubit) => cubit.close(),
+    );
+  }
+  if (!getIt.isRegistered<ProductDetailLocalDataSource>()) {
+    getIt.registerLazySingleton<ProductDetailLocalDataSource>(
+      () => SharedPreferencesProductDetailLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+  if (!getIt.isRegistered<ProductDetailRemoteDataSource>()) {
+    getIt.registerLazySingleton<ProductDetailRemoteDataSource>(
+      () => DioProductDetailRemoteDataSource(getIt<Dio>()),
+    );
+  }
+  if (!getIt.isRegistered<ProductDetailRepository>()) {
+    getIt.registerLazySingleton<ProductDetailRepository>(
+      () => ProductDetailRepositoryImpl(getIt<ProductDetailRemoteDataSource>(), getIt<ProductDetailLocalDataSource>()),
+    );
+  }
+  if (!getIt.isRegistered<GetProductDetailUseCase>()) {
+    getIt.registerLazySingleton<GetProductDetailUseCase>(
+      () => GetProductDetailUseCase(getIt<ProductDetailRepository>()),
+    );
+  }
+  if (!getIt.isRegistered<ProductDetailCubit>()) {
+    getIt.registerFactory<ProductDetailCubit>(
+      () => ProductDetailCubit(getDetail: getIt<GetProductDetailUseCase>(), repository: getIt<ProductDetailRepository>()),
+    );
+  }
+
   if (!getIt.isRegistered<GoRouter>()) {
     getIt.registerLazySingleton<GoRouter>(
       () => AppRouter.create(
         authCubit: getIt<AuthCubit>(),
         createProductListCubit: () => getIt<ProductListCubit>(),
+        createProductDetailCubit: () => getIt<ProductDetailCubit>(),
+        cartCubit: getIt<CartCubit>(),
       ),
     );
   }

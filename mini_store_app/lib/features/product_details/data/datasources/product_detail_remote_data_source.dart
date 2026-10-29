@@ -1,0 +1,4 @@
+import 'package:dio/dio.dart';
+import '../../../products/data/models/product_model.dart'; import '../../../products/domain/entities/product.dart'; import '../../../products/data/product_error_mapper.dart';
+abstract interface class ProductDetailRemoteDataSource { Future<Product> fetchDetail(int id); }
+class DioProductDetailRemoteDataSource implements ProductDetailRemoteDataSource { DioProductDetailRemoteDataSource(this._dio); final Dio _dio; @override Future<Product> fetchDetail(int id) async { try { final response = await _dio.get<Object?>('/products/$id'); final value = response.data; if (value is! Map) throw const FormatException('Invalid product detail response.'); return ProductModel.fromJson(Map<String, dynamic>.from(value)).toEntity(); } on DioException catch (exception) { throw mapProductDioException(exception); } } }

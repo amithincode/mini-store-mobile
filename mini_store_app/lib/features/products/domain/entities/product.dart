@@ -1,5 +1,7 @@
 import 'package:equatable/equatable.dart';
 
+import 'product_review.dart';
+
 /// A product shown in the storefront.
 ///
 /// Pure Dart: JSON parsing belongs to the data layer and is mapped into this
@@ -18,6 +20,11 @@ class Product extends Equatable {
     this.discountPercentage = 0,
     this.availabilityStatus = '',
     this.images = const <String>[],
+    this.reviews = const <ProductReview>[],
+    this.warrantyInformation = '',
+    this.shippingInformation = '',
+    this.returnPolicy = '',
+    this.minimumOrderQuantity = 1,
   });
 
   final int id;
@@ -36,6 +43,11 @@ class Product extends Equatable {
 
   /// Additional gallery images. The thumbnail is not repeated here.
   final List<String> images;
+  final List<ProductReview> reviews;
+  final String warrantyInformation;
+  final String shippingInformation;
+  final String returnPolicy;
+  final int minimumOrderQuantity;
 
   bool get hasDiscount => discountPercentage > 0;
 
@@ -55,5 +67,10 @@ class Product extends Equatable {
     discountPercentage,
     availabilityStatus,
     images,
+    reviews,
+    warrantyInformation,
+    shippingInformation,
+    returnPolicy,
+    minimumOrderQuantity,
   ];
 }

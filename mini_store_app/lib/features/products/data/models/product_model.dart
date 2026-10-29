@@ -1,4 +1,5 @@
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_review.dart';
 
 /// Transport model for a single product.
 ///
@@ -18,6 +19,11 @@ class ProductModel {
     required this.discountPercentage,
     required this.availabilityStatus,
     required this.images,
+    required this.reviews,
+    required this.warrantyInformation,
+    required this.shippingInformation,
+    required this.returnPolicy,
+    required this.minimumOrderQuantity,
     this.brand,
   });
 
@@ -33,6 +39,11 @@ class ProductModel {
   final double discountPercentage;
   final String availabilityStatus;
   final List<String> images;
+  final List<ProductReview> reviews;
+  final String warrantyInformation;
+  final String shippingInformation;
+  final String returnPolicy;
+  final int minimumOrderQuantity;
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     final id = _readInt(json['id']);
@@ -58,6 +69,11 @@ class ProductModel {
       discountPercentage: _readDouble(json['discountPercentage']) ?? 0,
       availabilityStatus: _readString(json['availabilityStatus']),
       images: images,
+      reviews: _readReviews(json['reviews']),
+      warrantyInformation: _readString(json['warrantyInformation']),
+      shippingInformation: _readString(json['shippingInformation']),
+      returnPolicy: _readString(json['returnPolicy']),
+      minimumOrderQuantity: _readInt(json['minimumOrderQuantity']) ?? 1,
     );
   }
 
@@ -75,6 +91,11 @@ class ProductModel {
       discountPercentage: product.discountPercentage,
       availabilityStatus: product.availabilityStatus,
       images: product.images,
+      reviews: product.reviews,
+      warrantyInformation: product.warrantyInformation,
+      shippingInformation: product.shippingInformation,
+      returnPolicy: product.returnPolicy,
+      minimumOrderQuantity: product.minimumOrderQuantity,
     );
   }
 
@@ -92,6 +113,11 @@ class ProductModel {
       discountPercentage: discountPercentage,
       availabilityStatus: availabilityStatus,
       images: images,
+      reviews: reviews,
+      warrantyInformation: warrantyInformation,
+      shippingInformation: shippingInformation,
+      returnPolicy: returnPolicy,
+      minimumOrderQuantity: minimumOrderQuantity,
     );
   }
 
@@ -109,6 +135,11 @@ class ProductModel {
       'discountPercentage': discountPercentage,
       'availabilityStatus': availabilityStatus,
       'images': images,
+      'reviews': reviews.map(ProductReviewModel.fromEntity).map((review) => review.toJson()).toList(),
+      'warrantyInformation': warrantyInformation,
+      'shippingInformation': shippingInformation,
+      'returnPolicy': returnPolicy,
+      'minimumOrderQuantity': minimumOrderQuantity,
     };
   }
 
@@ -159,4 +190,30 @@ class ProductModel {
           .where((item) => item.isNotEmpty),
     );
   }
+
+  static List<ProductReview> _readReviews(Object? value) {
+    if (value is! List) return const <ProductReview>[];
+    return List<ProductReview>.unmodifiable(value.whereType<Map>().map((item) {
+      return ProductReviewModel.fromJson(Map<String, dynamic>.from(item)).toEntity();
+    }));
+  }
+}
+
+class ProductReviewModel {
+  const ProductReviewModel({required this.rating, required this.comment, required this.date, required this.reviewerName, this.reviewerEmail});
+  final int rating;
+  final String comment;
+  final DateTime date;
+  final String reviewerName;
+  final String? reviewerEmail;
+  factory ProductReviewModel.fromJson(Map<String, dynamic> json) => ProductReviewModel(
+    rating: (json['rating'] as num?)?.round() ?? 0,
+    comment: (json['comment'] as String? ?? '').trim(),
+    date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
+    reviewerName: (json['reviewerName'] as String? ?? 'Anonymous').trim(),
+    reviewerEmail: json['reviewerEmail'] as String?,
+  );
+  factory ProductReviewModel.fromEntity(ProductReview review) => ProductReviewModel(rating: review.rating, comment: review.comment, date: review.date, reviewerName: review.reviewerName, reviewerEmail: review.reviewerEmail);
+  ProductReview toEntity() => ProductReview(rating: rating, comment: comment, date: date, reviewerName: reviewerName, reviewerEmail: reviewerEmail);
+  Map<String, dynamic> toJson() => {'rating': rating, 'comment': comment, 'date': date.toUtc().toIso8601String(), 'reviewerName': reviewerName, 'reviewerEmail': reviewerEmail};
 }

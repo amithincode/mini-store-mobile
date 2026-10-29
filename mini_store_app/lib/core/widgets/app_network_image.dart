@@ -31,9 +31,7 @@ class AppNetworkImage extends StatelessWidget {
       label: semanticLabel,
       child: Image.network(
         imageUrl,
-        width: 200,
-        height: 200,
-        fit: BoxFit.contain,
+        fit: fit,
         loadingBuilder: (context, child, progress) {
           if (progress == null) return child;
 
