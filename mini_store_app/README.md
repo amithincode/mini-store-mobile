@@ -1,7 +1,8 @@
 
-| Screen 1 | Screen 2 | Screen 3 | Screen 4 | Screen 5 | Screen 6 |
-|---|---|---|---|---|---|
-| <img src="https://github.com/user-attachments/assets/c7c415ad-7348-4730-9aaf-89a9f81b4cd6" width="120"> | <img src="https://github.com/user-attachments/assets/20de0ada-d5c0-46c1-8ae7-53c19f58b15b" width="120"> | <img src="https://github.com/user-attachments/assets/11e4b9a1-c07d-493c-a416-cb4a5389345c" width="120"> | <img src="https://github.com/user-attachments/assets/60c3647b-4300-48b5-9183-b81c45eccd84" width="120"> | <img src="https://github.com/user-attachments/assets/266855a9-be7c-487d-80cc-3057dfcbe49f" width="120"> | <img src="https://github.com/user-attachments/assets/77660e65-6868-4fb1-84b5-c791e65c308f" width="120"> |
+| Screen 1 | Screen 2 | Screen 3 | Screen 4 | Screen 5 | Screen 6 | Screen 7|
+|---|---|---|---|---|---|---|
+| <img src="https://github.com/user-attachments/assets/c7c415ad-7348-4730-9aaf-89a9f81b4cd6" width="120"> | <img src="https://github.com/user-attachments/assets/20de0ada-d5c0-46c1-8ae7-53c19f58b15b" width="120"> | <img src="https://github.com/user-attachments/assets/11e4b9a1-c07d-493c-a416-cb4a5389345c" width="120"> | <img src="https://github.com/user-attachments/assets/60c3647b-4300-48b5-9183-b81c45eccd84" width="120"> | <img src="https://github.com/user-attachments/assets/266855a9-be7c-487d-80cc-3057dfcbe49f" width="120"> | <img src="https://github.com/user-attachments/assets/77660e65-6868-4fb1-84b5-c791e65c308f" width="120"> |<img width="727" height="1600" alt="image" src="https://github.com/user-attachments/assets/80b2481f-c851-4a03-92e2-3b7fb0d57145" /> |
+
 
 
 
