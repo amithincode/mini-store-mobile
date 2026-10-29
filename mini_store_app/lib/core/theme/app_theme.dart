@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
+import 'app_system_ui.dart';
 import 'app_typography.dart';
 
 /// Central Material 3 theme. Feature screens should not define their own
@@ -54,7 +54,7 @@ abstract final class AppTheme {
         scrolledUnderElevation: 0,
         centerTitle: false,
         toolbarHeight: 64,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        systemOverlayStyle: AppSystemUi.light,
         titleTextStyle: AppTypography.titleLarge,
         iconTheme: const IconThemeData(color: AppColors.textPrimary),
       ),

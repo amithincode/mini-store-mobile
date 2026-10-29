@@ -19,14 +19,26 @@ import '../../features/auth/domain/usecases/logout_use_case.dart';
 import '../../features/auth/domain/usecases/refresh_session_use_case.dart';
 import '../../features/auth/domain/usecases/restore_session_use_case.dart';
 import '../../features/auth/presentation/cubit/auth_cubit.dart';
+import '../../features/products/domain/entities/product_list_source.dart';
 import '../../features/products/data/datasources/product_local_data_source.dart';
 import '../../features/products/data/datasources/product_remote_data_source.dart';
 import '../../features/products/data/repositories/product_repository_impl.dart';
 import '../../features/products/domain/repositories/product_repository.dart';
 import '../../features/products/domain/usecases/get_cached_products_use_case.dart';
+import '../../features/products/domain/usecases/get_category_products_use_case.dart';
 import '../../features/products/domain/usecases/get_products_use_case.dart';
 import '../../features/products/domain/usecases/search_products_use_case.dart';
 import '../../features/products/presentation/cubit/product_list_cubit.dart';
+import '../../features/categories/data/datasources/category_local_data_source.dart';
+import '../../features/categories/data/datasources/category_remote_data_source.dart';
+import '../../features/categories/data/repositories/category_repository_impl.dart';
+import '../../features/categories/domain/repositories/category_repository.dart';
+import '../../features/categories/domain/usecases/fetch_category_image_use_case.dart';
+import '../../features/categories/domain/usecases/get_cached_categories_use_case.dart';
+import '../../features/categories/domain/usecases/get_cached_category_images_use_case.dart';
+import '../../features/categories/domain/usecases/get_categories_use_case.dart';
+import '../../features/categories/domain/usecases/save_category_images_use_case.dart';
+import '../../features/categories/presentation/cubit/categories_cubit.dart';
 import '../../features/cart/data/datasources/cart_local_data_source.dart';
 import '../../features/cart/data/repositories/cart_repository_impl.dart';
 import '../../features/cart/domain/repositories/cart_repository.dart';
@@ -37,7 +49,11 @@ import '../../features/product_details/data/repositories/product_detail_reposito
 import '../../features/product_details/domain/repositories/product_detail_repository.dart';
 import '../../features/product_details/domain/usecases/get_product_detail_use_case.dart';
 import '../../features/product_details/presentation/cubit/product_detail_cubit.dart';
+import '../../features/orders/domain/services/order_number_generator.dart';
+import '../../features/orders/domain/usecases/place_order_use_case.dart';
+import '../../features/orders/presentation/cubit/checkout_cubit.dart';
 import '../router/app_router.dart';
+import '../shell/main_tab_controller.dart';
 
 /// Central service locator. Only bootstrap code and tests should touch this;
 /// widgets receive dependencies through constructors.
@@ -189,12 +205,82 @@ Future<void> configureDependencies({required AppConfig config}) async {
     );
   }
 
+  if (!getIt.isRegistered<GetCategoryProductsUseCase>()) {
+    getIt.registerLazySingleton<GetCategoryProductsUseCase>(
+      () => GetCategoryProductsUseCase(getIt<ProductRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<CategoryLocalDataSource>()) {
+    getIt.registerLazySingleton<CategoryLocalDataSource>(
+      () => SharedPreferencesCategoryLocalDataSource(getIt<AppStorage>()),
+    );
+  }
+
+  if (!getIt.isRegistered<CategoryRemoteDataSource>()) {
+    getIt.registerLazySingleton<CategoryRemoteDataSource>(
+      () => DioCategoryRemoteDataSource(getIt<Dio>()),
+    );
+  }
+
+  if (!getIt.isRegistered<CategoryRepository>()) {
+    getIt.registerLazySingleton<CategoryRepository>(
+      () => CategoryRepositoryImpl(
+        getIt<CategoryRemoteDataSource>(),
+        getIt<CategoryLocalDataSource>(),
+      ),
+    );
+  }
+
+  if (!getIt.isRegistered<GetCategoriesUseCase>()) {
+    getIt.registerLazySingleton<GetCategoriesUseCase>(
+      () => GetCategoriesUseCase(getIt<CategoryRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<GetCachedCategoriesUseCase>()) {
+    getIt.registerLazySingleton<GetCachedCategoriesUseCase>(
+      () => GetCachedCategoriesUseCase(getIt<CategoryRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<GetCachedCategoryImagesUseCase>()) {
+    getIt.registerLazySingleton<GetCachedCategoryImagesUseCase>(
+      () => GetCachedCategoryImagesUseCase(getIt<CategoryRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<FetchCategoryImageUseCase>()) {
+    getIt.registerLazySingleton<FetchCategoryImageUseCase>(
+      () => FetchCategoryImageUseCase(getIt<CategoryRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<SaveCategoryImagesUseCase>()) {
+    getIt.registerLazySingleton<SaveCategoryImagesUseCase>(
+      () => SaveCategoryImagesUseCase(getIt<CategoryRepository>()),
+    );
+  }
+
+  if (!getIt.isRegistered<CategoriesCubit>()) {
+    getIt.registerFactory<CategoriesCubit>(
+      () => CategoriesCubit(
+        getCategories: getIt<GetCategoriesUseCase>(),
+        getCachedCategories: getIt<GetCachedCategoriesUseCase>(),
+        getCachedImages: getIt<GetCachedCategoryImagesUseCase>(),
+        fetchImage: getIt<FetchCategoryImageUseCase>(),
+        saveImages: getIt<SaveCategoryImagesUseCase>(),
+      ),
+    );
+  }
+
   if (!getIt.isRegistered<ProductListCubit>()) {
     getIt.registerFactory<ProductListCubit>(
       () => ProductListCubit(
         getProducts: getIt<GetProductsUseCase>(),
         searchProducts: getIt<SearchProductsUseCase>(),
         getCachedProducts: getIt<GetCachedProductsUseCase>(),
+        getCategoryProducts: getIt<GetCategoryProductsUseCase>(),
       ),
     );
   }
@@ -227,7 +313,10 @@ Future<void> configureDependencies({required AppConfig config}) async {
   }
   if (!getIt.isRegistered<ProductDetailRepository>()) {
     getIt.registerLazySingleton<ProductDetailRepository>(
-      () => ProductDetailRepositoryImpl(getIt<ProductDetailRemoteDataSource>(), getIt<ProductDetailLocalDataSource>()),
+      () => ProductDetailRepositoryImpl(
+        getIt<ProductDetailRemoteDataSource>(),
+        getIt<ProductDetailLocalDataSource>(),
+      ),
     );
   }
   if (!getIt.isRegistered<GetProductDetailUseCase>()) {
@@ -237,7 +326,39 @@ Future<void> configureDependencies({required AppConfig config}) async {
   }
   if (!getIt.isRegistered<ProductDetailCubit>()) {
     getIt.registerFactory<ProductDetailCubit>(
-      () => ProductDetailCubit(getDetail: getIt<GetProductDetailUseCase>(), repository: getIt<ProductDetailRepository>()),
+      () => ProductDetailCubit(
+        getDetail: getIt<GetProductDetailUseCase>(),
+        repository: getIt<ProductDetailRepository>(),
+      ),
+    );
+  }
+
+  if (!getIt.isRegistered<MainTabController>()) {
+    getIt.registerLazySingleton<MainTabController>(
+      MainTabController.new,
+      dispose: (controller) => controller.dispose(),
+    );
+  }
+
+  if (!getIt.isRegistered<OrderNumberGenerator>()) {
+    getIt.registerLazySingleton<OrderNumberGenerator>(
+      RandomOrderNumberGenerator.new,
+    );
+  }
+
+  if (!getIt.isRegistered<PlaceOrderUseCase>()) {
+    getIt.registerLazySingleton<PlaceOrderUseCase>(
+      () => PlaceOrderUseCase(getIt<OrderNumberGenerator>()),
+    );
+  }
+
+  if (!getIt.isRegistered<CheckoutCubit>()) {
+    getIt.registerLazySingleton<CheckoutCubit>(
+      () => CheckoutCubit(
+        cart: getIt<CartCubit>(),
+        placeOrder: getIt<PlaceOrderUseCase>(),
+      ),
+      dispose: (cubit) => cubit.close(),
     );
   }
 
@@ -246,8 +367,18 @@ Future<void> configureDependencies({required AppConfig config}) async {
       () => AppRouter.create(
         authCubit: getIt<AuthCubit>(),
         createProductListCubit: () => getIt<ProductListCubit>(),
+        createCategoriesCubit: () => getIt<CategoriesCubit>(),
+        createCategoryProductListCubit: (slug) => ProductListCubit(
+          getProducts: getIt<GetProductsUseCase>(),
+          searchProducts: getIt<SearchProductsUseCase>(),
+          getCachedProducts: getIt<GetCachedProductsUseCase>(),
+          getCategoryProducts: getIt<GetCategoryProductsUseCase>(),
+          source: ProductListSource.category(slug),
+        ),
         createProductDetailCubit: () => getIt<ProductDetailCubit>(),
         cartCubit: getIt<CartCubit>(),
+        checkoutCubit: getIt<CheckoutCubit>(),
+        tabController: getIt<MainTabController>(),
       ),
     );
   }

@@ -1,8 +1,13 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../../../../core/utils/responsive.dart';
+import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/product.dart';
 import 'product_card.dart';
+
+/// Keys already sent to the image cache, per decode width and product.
+final Set<String> _prefetchedImages = <String>{};
 
 /// Responsive product grid as a sliver so the page builds cards lazily.
 ///
@@ -37,6 +42,12 @@ class ProductSliverGrid extends StatelessWidget {
         final contentHeight = 128 + (textScale - 1).clamp(0.0, 2.0) * 82;
         final imageCacheWidth = (itemWidth * devicePixelRatio).round();
 
+        _prefetchFirstImages(
+          context,
+          products,
+          imageCacheWidth: imageCacheWidth,
+        );
+
         return SliverGrid(
           key: const ValueKey('product-grid'),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -57,5 +68,49 @@ class ProductSliverGrid extends StatelessWidget {
         );
       },
     );
+  }
+
+  /// Warms the image cache for the first visible batch once the grid has
+  /// measured its real cell width, so detail and re-entry feel instant.
+  void _prefetchFirstImages(
+    BuildContext context,
+    List<Product> products, {
+    required int imageCacheWidth,
+  }) {
+    if (kIsWeb) {
+      return;
+    }
+
+    final pending = <Product>[];
+    for (final product in products) {
+      final url = product.imageUrl.trim();
+      if (url.isEmpty) {
+        continue;
+      }
+      final key = '$imageCacheWidth:${product.id}:$url';
+      if (_prefetchedImages.add(key)) {
+        pending.add(product);
+      }
+      if (pending.length == 12) {
+        break;
+      }
+    }
+
+    if (pending.isEmpty) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final product in pending) {
+        precacheImage(
+          appNetworkImageProvider(
+            product.imageUrl,
+            memCacheWidth: imageCacheWidth,
+          ),
+          context,
+          onError: (_, _) {},
+        );
+      }
+    });
   }
 }

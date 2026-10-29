@@ -25,9 +25,13 @@ class FakeProductRemoteDataSource implements ProductRemoteDataSource {
   ProductListResponseModel Function(int skip, int limit)? onList;
   ProductListResponseModel Function(String query, int skip, int limit)?
   onSearch;
+  ProductListResponseModel Function(String slug, int skip, int limit)?
+  onCategory;
 
   final List<({String query, int skip, int limit, bool isSearch})> calls =
       <({String query, int skip, int limit, bool isSearch})>[];
+  final List<({String slug, int skip, int limit})> categoryCalls =
+      <({String slug, int skip, int limit})>[];
 
   @override
   Future<ProductListResponseModel> fetchProducts({
@@ -52,6 +56,22 @@ class FakeProductRemoteDataSource implements ProductRemoteDataSource {
   }) async {
     calls.add((query: query, skip: skip, limit: limit, isSearch: true));
     return onSearch?.call(query, skip, limit) ??
+        ProductListResponseModel(
+          products: const [],
+          total: 0,
+          skip: skip,
+          limit: limit,
+        );
+  }
+
+  @override
+  Future<ProductListResponseModel> fetchCategoryProducts({
+    required String slug,
+    required int skip,
+    required int limit,
+  }) async {
+    categoryCalls.add((slug: slug, skip: skip, limit: limit));
+    return onCategory?.call(slug, skip, limit) ??
         ProductListResponseModel(
           products: const [],
           total: 0,

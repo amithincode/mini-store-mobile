@@ -6,6 +6,7 @@ import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_network_image.dart';
 import '../../domain/entities/product.dart';
 import '../utils/product_category_label.dart';
+import '../utils/product_image_hero.dart';
 
 /// Compact product tile used by the responsive grid.
 class ProductCard extends StatelessWidget {
@@ -43,10 +44,12 @@ class ProductCard extends StatelessWidget {
                     color: AppColors.imageBackground,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: AppNetworkImage(
-                        imageUrl: product.imageUrl,
-                        semanticLabel: product.title,
-                        memCacheWidth: imageCacheWidth,
+                      child: _hero(
+                        AppNetworkImage(
+                          imageUrl: product.imageUrl,
+                          semanticLabel: product.title,
+                          memCacheWidth: imageCacheWidth,
+                        ),
                       ),
                     ),
                   ),
@@ -105,6 +108,15 @@ class ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// An empty thumbnail has no destination in the detail gallery, so it must
+  /// not participate in the Hero flight.
+  Widget _hero(Widget child) {
+    if (product.imageUrl.trim().isEmpty) {
+      return child;
+    }
+    return Hero(tag: productImageHeroTag(product.id), child: child);
   }
 }
 

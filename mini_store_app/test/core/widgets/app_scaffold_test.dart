@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mini_store_app/core/theme/app_colors.dart';
 import 'package:mini_store_app/core/theme/app_theme.dart';
 import 'package:mini_store_app/core/widgets/app_app_bar.dart';
 import 'package:mini_store_app/core/widgets/app_scaffold.dart';
@@ -65,5 +66,52 @@ void main() {
     await _pumpScaffold(tester, 1800);
 
     expect(tester.getSize(find.byKey(_bodyKey)).width, 1136);
+  });
+
+  testWidgets('keeps the system navigation bar light for a surface app bar', (
+    tester,
+  ) async {
+    await _pumpScaffold(tester, 400);
+
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(appBar.systemOverlayStyle?.statusBarIconBrightness, Brightness.dark);
+    expect(
+      appBar.systemOverlayStyle?.systemNavigationBarColor,
+      AppColors.surface,
+    );
+    expect(
+      appBar.systemOverlayStyle?.systemNavigationBarIconBrightness,
+      Brightness.dark,
+    );
+  });
+
+  testWidgets('flips status icons over a dark app bar gradient', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: AppScaffold(
+          appBar: AppAppBar(
+            title: 'Home',
+            showDivider: false,
+            foregroundColor: Colors.white,
+            gradient: AppColors.primaryGradient,
+          ),
+          body: const SizedBox(height: 200),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final appBar = tester.widget<AppBar>(find.byType(AppBar));
+    expect(
+      appBar.systemOverlayStyle?.statusBarIconBrightness,
+      Brightness.light,
+    );
+    expect(
+      appBar.systemOverlayStyle?.systemNavigationBarColor,
+      AppColors.surface,
+    );
   });
 }

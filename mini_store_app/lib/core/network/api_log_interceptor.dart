@@ -141,7 +141,9 @@ class ApiLogInterceptor extends Interceptor {
     final decoded = data is String ? (_tryDecodeJson(data) ?? data) : data;
 
     try {
-      final pretty = const JsonEncoder.withIndent('  ').convert(_redact(decoded));
+      final pretty = const JsonEncoder.withIndent(
+        '  ',
+      ).convert(_redact(decoded));
 
       if (pretty.length > _maxBodyLength) {
         return '[Body omitted: ${pretty.length} chars exceeds the '
@@ -197,4 +199,3 @@ class ApiLogInterceptor extends Interceptor {
     return '$top\n$body\n$bottom';
   }
 }
-

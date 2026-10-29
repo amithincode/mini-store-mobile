@@ -140,4 +140,41 @@ void main() {
     expect(page.skip, 0);
     expect(page.hasMore, isTrue);
   });
+
+  test('fetches a category with its slug and caches it separately', () async {
+    remote.onCategory = (slug, skip, limit) => responseWith(
+      testProductsFrom(20, 10),
+      total: 35,
+      skip: skip,
+      limit: limit,
+    );
+
+    final page = await repository.fetchCategoryPage(
+      slug: 'home-decoration',
+      skip: 0,
+      limit: 10,
+    );
+
+    expect(page.products, hasLength(10));
+    expect(page.total, 35);
+    expect(remote.categoryCalls.single.slug, 'home-decoration');
+    expect(remote.calls, isEmpty);
+    expect(local.saves.single.query, 'category:home-decoration');
+    expect(local.cache['category:home-decoration'], isNotNull);
+    expect(local.cache['category:beauty'], isNull);
+  });
+
+  test('keeps category caches isolated from the catalogue', () async {
+    remote.onCategory = (slug, skip, limit) => responseWith(
+      testProductsFrom(50, 2),
+      total: 2,
+      skip: skip,
+      limit: limit,
+    );
+
+    await repository.fetchCategoryPage(slug: 'beauty', skip: 0, limit: 10);
+
+    expect(local.cache['category:beauty']!.products, hasLength(2));
+    expect(local.cache[''], isNull);
+  });
 }

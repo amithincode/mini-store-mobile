@@ -5,14 +5,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../core/widgets/app_app_bar.dart';
 import '../../../../core/widgets/app_scaffold.dart';
+import '../../../../core/widgets/bottom_bar_auto_hide.dart';
 import '../../../../core/widgets/state_views.dart';
-import '../../../cart/presentation/widgets/cart_icon_button.dart';
-import '../../../cart/presentation/cubit/cart_cubit.dart';
-import '../../../cart/presentation/cubit/cart_state.dart';
 import '../../../../app/router/app_router.dart';
 import '../cubit/product_list_cubit.dart';
 import '../cubit/product_list_state.dart';
@@ -27,26 +26,29 @@ import '../widgets/store_search_field.dart';
 ///
 /// [createCubit] is injected by the router (and by tests) so the screen never
 /// reaches into the service locator. The page itself stays stateless; only the
-/// search controller and scroll bookkeeping live in a small stateful child.
+/// search controller, scroll bookkeeping, and bottom-bar visibility live in a
+/// small stateful child.
 class StoreScreen extends StatelessWidget {
-  const StoreScreen({super.key, required this.createCubit, this.onCartTap});
+  const StoreScreen({super.key, required this.createCubit, this.bottomBar});
 
   final ProductListCubit Function() createCubit;
-  final VoidCallback? onCartTap;
+
+  /// Drives the shell's bottom navigation while this tab scrolls.
+  final BottomBarVisibilityController? bottomBar;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider<ProductListCubit>(
       create: (context) => createCubit()..loadInitial(),
-      child: _StoreView(onCartTap: onCartTap),
+      child: _StoreView(bottomBar: bottomBar),
     );
   }
 }
 
 class _StoreView extends StatefulWidget {
-  const _StoreView({this.onCartTap});
+  const _StoreView({this.bottomBar});
 
-  final VoidCallback? onCartTap;
+  final BottomBarVisibilityController? bottomBar;
 
   @override
   State<_StoreView> createState() => _StoreViewState();
@@ -82,6 +84,16 @@ class _StoreViewState extends State<_StoreView> {
       _scrollController.jumpTo(0);
     }
     context.read<ProductListCubit>().refresh();
+  }
+
+  void _openNotifications() {
+    if (GoRouter.maybeOf(context) == null) {
+      _showPlaceholder(
+        'Notifications are available in the full app experience.',
+      );
+      return;
+    }
+    context.pushNamed(AppRoutes.notificationsName);
   }
 
   bool _onScroll(ScrollNotification notification) {
@@ -135,23 +147,31 @@ class _StoreViewState extends State<_StoreView> {
       appBar: AppAppBar(
         title: 'Mini Store',
         subtitle: 'Everyday essentials',
+        //  gradient: AppColors.primaryGradient,
+        backgroundColor: AppColors.primary.withValues(alpha: 15),
+        foregroundColor: Colors.white,
+        toolbarHeight: 68,
+        showDivider: false,
+
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
         actions: [
           if (kIsWeb || metrics.isDesktop)
-            IconButton(
+            _HomeAppBarAction(
               tooltip: 'Refresh products',
               onPressed: _refreshProducts,
-              icon: const Icon(Icons.refresh_rounded),
+              icon: Icons.refresh_rounded,
             ),
-          _StoreCartButton(
-            onPressed:
-                widget.onCartTap ??
-                () => _showPlaceholder('Cart is available from the Cart tab.'),
+          _HomeAppBarAction(
+            tooltip: 'Notifications',
+            onPressed: _openNotifications,
+            icon: Icons.notifications_none_rounded,
           ),
         ],
       ),
       body: BlocListener<ProductListCubit, ProductListState>(
         listenWhen: (previous, current) => previous.query != current.query,
         listener: (context, state) {
+          widget.bottomBar?.show();
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && _scrollController.hasClients) {
               _scrollController.jumpTo(0);
@@ -162,43 +182,46 @@ class _StoreViewState extends State<_StoreView> {
           builder: (context, state) {
             _scheduleViewportCheck();
 
-            return NotificationListener<ScrollNotification>(
-              onNotification: _onScroll,
-              child: RefreshIndicator(
-                onRefresh: context.read<ProductListCubit>().refresh,
-                child: CustomScrollView(
-                  key: const ValueKey('store-scroll'),
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  keyboardDismissBehavior:
-                      ScrollViewKeyboardDismissBehavior.onDrag,
-                  slivers: [
-                    SliverPadding(
-                      padding: EdgeInsets.only(
-                        top: metrics.isMobile ? AppSpacing.lg : AppSpacing.xl,
-                      ),
-                      sliver: SliverToBoxAdapter(
-                        child: _StoreHeader(
-                          searchController: _searchController,
-                          searchMaxWidth: metrics.searchMaxWidth,
-                          bannerHeight: bannerHeight,
-                          state: state,
-                          onSearchChanged: context
-                              .read<ProductListCubit>()
-                              .search,
-                          onSearchSubmitted: context
-                              .read<ProductListCubit>()
-                              .submitSearch,
-                          onClearSearch: _clearSearch,
-                          onRefresh: context.read<ProductListCubit>().refresh,
-                          onShopNow: () => _showPlaceholder(
-                            'Promotions are coming in a later phase.',
+            return BottomBarAutoHide(
+              controller: widget.bottomBar,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: RefreshIndicator(
+                  onRefresh: context.read<ProductListCubit>().refresh,
+                  child: CustomScrollView(
+                    key: const ValueKey('store-scroll'),
+                    controller: _scrollController,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    slivers: [
+                      SliverPadding(
+                        padding: EdgeInsets.only(
+                          top: metrics.isMobile ? AppSpacing.lg : AppSpacing.xl,
+                        ),
+                        sliver: SliverToBoxAdapter(
+                          child: _StoreHeader(
+                            searchController: _searchController,
+                            searchMaxWidth: metrics.searchMaxWidth,
+                            bannerHeight: bannerHeight,
+                            state: state,
+                            onSearchChanged: context
+                                .read<ProductListCubit>()
+                                .search,
+                            onSearchSubmitted: context
+                                .read<ProductListCubit>()
+                                .submitSearch,
+                            onClearSearch: _clearSearch,
+                            onRefresh: context.read<ProductListCubit>().refresh,
+                            onShopNow: () => _showPlaceholder(
+                              'Promotions are coming in a later phase.',
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    ..._contentSlivers(context, state),
-                  ],
+                      ..._contentSlivers(context, state),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -272,7 +295,9 @@ class _StoreViewState extends State<_StoreView> {
               // The production shell supplies GoRouter. The graceful fallback
               // keeps this reusable screen usable in isolated previews/tests.
               if (GoRouter.maybeOf(context) == null) {
-                _showPlaceholder('Product details for ${product.title} are coming in a later phase.');
+                _showPlaceholder(
+                  'Product details for ${product.title} are coming in a later phase.',
+                );
                 return;
               }
               context.pushNamed(
@@ -312,32 +337,32 @@ class _StoreViewState extends State<_StoreView> {
   }
 }
 
-class _StoreCartButton extends StatelessWidget {
-  const _StoreCartButton({required this.onPressed});
+class _HomeAppBarAction extends StatelessWidget {
+  const _HomeAppBarAction({
+    required this.tooltip,
+    required this.onPressed,
+    required this.icon,
+  });
 
+  final String tooltip;
   final VoidCallback onPressed;
+  final IconData icon;
 
   @override
   Widget build(BuildContext context) {
-    // Keeping this fallback makes the reusable StoreScreen independently
-    // testable; the app shell always supplies the shared CartCubit.
-    if (_findCartCubit(context) == null) {
-      return CartIconButton(onPressed: onPressed);
-    }
-    return BlocBuilder<CartCubit, CartState>(
-      builder: (context, cart) => CartIconButton(
-        badgeCount: cart.itemCount,
+    return Padding(
+      padding: const EdgeInsets.only(left: AppSpacing.xxs),
+      child: IconButton(
+        tooltip: tooltip,
         onPressed: onPressed,
+        icon: Icon(icon, size: 21),
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white.withValues(alpha: 0.16),
+          foregroundColor: Colors.white,
+          minimumSize: const Size(40, 40),
+        ),
       ),
     );
-  }
-}
-
-CartCubit? _findCartCubit(BuildContext context) {
-  try {
-    return BlocProvider.of<CartCubit>(context, listen: false);
-  } catch (_) {
-    return null;
   }
 }
 

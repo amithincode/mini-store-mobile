@@ -36,6 +36,24 @@ class ProductRepositoryImpl implements ProductRepository {
   }
 
   @override
+  Future<ProductPage> fetchCategoryPage({
+    required String slug,
+    required int skip,
+    required int limit,
+  }) async {
+    final response = await _remoteDataSource.fetchCategoryProducts(
+      slug: slug,
+      skip: skip,
+      limit: limit,
+    );
+
+    final page = response.toPage();
+    await _cachePage(query: 'category:$slug', page: page, requestedSkip: skip);
+
+    return page;
+  }
+
+  @override
   Future<ProductPage?> readCached({required String query}) async {
     try {
       final cached = await _localDataSource.read(normalizeProductQuery(query));

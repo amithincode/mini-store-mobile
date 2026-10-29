@@ -125,15 +125,15 @@ void main() {
     expect(cached!.products, hasLength(2));
   });
 
-  test('keeps at most ten query caches', () async {
-    for (var index = 0; index < 11; index++) {
+  test('keeps at most twenty query caches', () async {
+    for (var index = 0; index < 21; index++) {
       await save('query$index', testProductsFrom(index * 10 + 1, 1), total: 1);
     }
 
     final metaKeys = storage.keys.where(
       (key) => key.startsWith('mini_store.products.v1.meta.'),
     );
-    expect(metaKeys, hasLength(10));
+    expect(metaKeys, hasLength(20));
   });
 
   test('replacing a query prunes items no longer referenced', () async {

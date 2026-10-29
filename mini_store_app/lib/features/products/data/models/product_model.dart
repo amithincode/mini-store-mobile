@@ -135,7 +135,10 @@ class ProductModel {
       'discountPercentage': discountPercentage,
       'availabilityStatus': availabilityStatus,
       'images': images,
-      'reviews': reviews.map(ProductReviewModel.fromEntity).map((review) => review.toJson()).toList(),
+      'reviews': reviews
+          .map(ProductReviewModel.fromEntity)
+          .map((review) => review.toJson())
+          .toList(),
       'warrantyInformation': warrantyInformation,
       'shippingInformation': shippingInformation,
       'returnPolicy': returnPolicy,
@@ -193,27 +196,59 @@ class ProductModel {
 
   static List<ProductReview> _readReviews(Object? value) {
     if (value is! List) return const <ProductReview>[];
-    return List<ProductReview>.unmodifiable(value.whereType<Map>().map((item) {
-      return ProductReviewModel.fromJson(Map<String, dynamic>.from(item)).toEntity();
-    }));
+    return List<ProductReview>.unmodifiable(
+      value.whereType<Map>().map((item) {
+        return ProductReviewModel.fromJson(
+          Map<String, dynamic>.from(item),
+        ).toEntity();
+      }),
+    );
   }
 }
 
 class ProductReviewModel {
-  const ProductReviewModel({required this.rating, required this.comment, required this.date, required this.reviewerName, this.reviewerEmail});
+  const ProductReviewModel({
+    required this.rating,
+    required this.comment,
+    required this.date,
+    required this.reviewerName,
+    this.reviewerEmail,
+  });
   final int rating;
   final String comment;
   final DateTime date;
   final String reviewerName;
   final String? reviewerEmail;
-  factory ProductReviewModel.fromJson(Map<String, dynamic> json) => ProductReviewModel(
-    rating: (json['rating'] as num?)?.round() ?? 0,
-    comment: (json['comment'] as String? ?? '').trim(),
-    date: DateTime.tryParse(json['date'] as String? ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0),
-    reviewerName: (json['reviewerName'] as String? ?? 'Anonymous').trim(),
-    reviewerEmail: json['reviewerEmail'] as String?,
+  factory ProductReviewModel.fromJson(Map<String, dynamic> json) =>
+      ProductReviewModel(
+        rating: (json['rating'] as num?)?.round() ?? 0,
+        comment: (json['comment'] as String? ?? '').trim(),
+        date:
+            DateTime.tryParse(json['date'] as String? ?? '') ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        reviewerName: (json['reviewerName'] as String? ?? 'Anonymous').trim(),
+        reviewerEmail: json['reviewerEmail'] as String?,
+      );
+  factory ProductReviewModel.fromEntity(ProductReview review) =>
+      ProductReviewModel(
+        rating: review.rating,
+        comment: review.comment,
+        date: review.date,
+        reviewerName: review.reviewerName,
+        reviewerEmail: review.reviewerEmail,
+      );
+  ProductReview toEntity() => ProductReview(
+    rating: rating,
+    comment: comment,
+    date: date,
+    reviewerName: reviewerName,
+    reviewerEmail: reviewerEmail,
   );
-  factory ProductReviewModel.fromEntity(ProductReview review) => ProductReviewModel(rating: review.rating, comment: review.comment, date: review.date, reviewerName: review.reviewerName, reviewerEmail: review.reviewerEmail);
-  ProductReview toEntity() => ProductReview(rating: rating, comment: comment, date: date, reviewerName: reviewerName, reviewerEmail: reviewerEmail);
-  Map<String, dynamic> toJson() => {'rating': rating, 'comment': comment, 'date': date.toUtc().toIso8601String(), 'reviewerName': reviewerName, 'reviewerEmail': reviewerEmail};
+  Map<String, dynamic> toJson() => {
+    'rating': rating,
+    'comment': comment,
+    'date': date.toUtc().toIso8601String(),
+    'reviewerName': reviewerName,
+    'reviewerEmail': reviewerEmail,
+  };
 }

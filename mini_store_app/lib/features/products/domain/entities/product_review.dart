@@ -16,5 +16,11 @@ class ProductReview extends Equatable {
   final String? reviewerEmail;
 
   @override
-  List<Object?> get props => [rating, comment, date, reviewerName, reviewerEmail];
+  List<Object?> get props => [
+    rating,
+    comment,
+    date,
+    reviewerName,
+    reviewerEmail,
+  ];
 }

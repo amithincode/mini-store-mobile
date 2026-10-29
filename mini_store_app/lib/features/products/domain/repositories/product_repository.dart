@@ -12,6 +12,13 @@ abstract interface class ProductRepository {
     required int limit,
   });
 
+  /// Fetches one page of products for a category slug.
+  Future<ProductPage> fetchCategoryPage({
+    required String slug,
+    required int skip,
+    required int limit,
+  });
+
   /// Reads previously cached products for [query], or `null` when absent.
   Future<ProductPage?> readCached({required String query});
 }

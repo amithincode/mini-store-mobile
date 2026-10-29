@@ -18,6 +18,12 @@ abstract interface class ProductRemoteDataSource {
     required int skip,
     required int limit,
   });
+
+  Future<ProductListResponseModel> fetchCategoryProducts({
+    required String slug,
+    required int skip,
+    required int limit,
+  });
 }
 
 /// DummyJSON product endpoints using the shared authenticated Dio client.
@@ -26,6 +32,7 @@ class DioProductRemoteDataSource implements ProductRemoteDataSource {
 
   static const String productsPath = '/products';
   static const String searchPath = '/products/search';
+  static const String categoriesPath = '/products/category';
 
   final Dio _dio;
 
@@ -53,6 +60,18 @@ class DioProductRemoteDataSource implements ProductRemoteDataSource {
         'limit': limit,
         'skip': skip,
       },
+    );
+  }
+
+  @override
+  Future<ProductListResponseModel> fetchCategoryProducts({
+    required String slug,
+    required int skip,
+    required int limit,
+  }) {
+    return _get(
+      '$categoriesPath/${Uri.encodeComponent(slug)}',
+      queryParameters: <String, dynamic>{'limit': limit, 'skip': skip},
     );
   }
 

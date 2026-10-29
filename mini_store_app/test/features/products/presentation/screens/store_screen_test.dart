@@ -2,7 +2,10 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mini_store_app/core/theme/app_colors.dart';
 import 'package:mini_store_app/core/theme/app_theme.dart';
+import 'package:mini_store_app/core/widgets/app_app_bar.dart';
+import 'package:mini_store_app/core/widgets/bottom_bar_auto_hide.dart';
 import 'package:mini_store_app/features/products/domain/entities/product.dart';
 import 'package:mini_store_app/features/products/domain/entities/product_page.dart';
 import 'package:mini_store_app/features/products/domain/failures/product_failure.dart';
@@ -46,7 +49,7 @@ Future<void> _pumpStore(
   Size size = const Size(390, 844),
   double textScale = 1,
   Duration searchDebounce = Duration.zero,
-  VoidCallback? onCartTap,
+  BottomBarVisibilityController? bottomBar,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -69,7 +72,7 @@ Future<void> _pumpStore(
           child: child!,
         );
       },
-      home: StoreScreen(createCubit: () => cubit, onCartTap: onCartTap),
+      home: StoreScreen(createCubit: () => cubit, bottomBar: bottomBar),
     ),
   );
 
@@ -93,6 +96,17 @@ FakeProductRepository _loadedRepository({
 }
 
 void main() {
+  testWidgets('uses the promo banner blue on the Home app bar', (tester) async {
+    await _pumpStore(tester, repository: _loadedRepository());
+
+    final appBar = tester.widget<AppAppBar>(find.byType(AppAppBar));
+    expect(appBar.gradient, AppColors.primaryGradient);
+    expect((appBar.gradient! as LinearGradient).colors, [
+      AppColors.primary,
+      AppColors.primaryDark,
+    ]);
+  });
+
   testWidgets('renders the responsive grid at each breakpoint', (tester) async {
     final repository = _loadedRepository();
     await _pumpStore(tester, repository: repository);
@@ -380,16 +394,18 @@ void main() {
     expect(find.byTooltip('Refresh products'), findsOneWidget);
   });
 
-  testWidgets('keeps the cart and product placeholders', (tester) async {
-    var cartTapped = false;
-    await _pumpStore(
-      tester,
-      repository: _loadedRepository(),
-      onCartTap: () => cartTapped = true,
-    );
+  testWidgets('opens the notifications fallback and product placeholders', (
+    tester,
+  ) async {
+    await _pumpStore(tester, repository: _loadedRepository());
 
-    await tester.tap(find.byTooltip('Cart'));
-    expect(cartTapped, isTrue);
+    await tester.tap(find.byTooltip('Notifications'));
+    await tester.pump();
+
+    expect(
+      find.text('Notifications are available in the full app experience.'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('product-card-1')));
     await tester.pump();
@@ -398,6 +414,33 @@ void main() {
       find.textContaining('Product details for Product 1'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('hides the bottom bar while scrolling and restores it on stop', (
+    tester,
+  ) async {
+    final visibility = <bool>[];
+    final bottomBar = BottomBarVisibilityController();
+    addTearDown(bottomBar.dispose);
+    bottomBar.addListener(() => visibility.add(bottomBar.visible));
+
+    await _pumpStore(
+      tester,
+      repository: _loadedRepository(),
+      bottomBar: bottomBar,
+    );
+
+    await tester.drag(
+      find.byKey(const ValueKey('store-scroll')),
+      const Offset(0, -320),
+    );
+    await tester.pump();
+
+    expect(visibility, contains(false));
+    expect(visibility.last, isFalse);
+
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(visibility.last, isTrue);
   });
 
   testWidgets('handles 1.3 text scale on a narrow phone without overflow', (

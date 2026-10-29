@@ -1,7 +1,5 @@
 import 'dart:convert';
 
-import 'package:mini_store_app/features/products/data/models/product_model.dart';
-
 import '../../../../core/storage/app_storage.dart';
 import '../../domain/entities/product.dart';
 import '../../domain/entities/product_query.dart';
@@ -54,7 +52,7 @@ class SharedPreferencesProductLocalDataSource
   }) : _now = now ?? DateTime.now;
 
   static const int schemaVersion = 1;
-  static const int maxCachedQueries = 10;
+  static const int maxCachedQueries = 20;
   static const String _allProductsKey = '__all__';
   static const String _prefix = 'mini_store.products.v1';
   static const String _schemaKey = '$_prefix.schema';
@@ -207,8 +205,19 @@ class SharedPreferencesProductLocalDataSource
         'updatedAt': _now().toUtc().toIso8601String(),
       });
 
-    final kept = index.take(maxCachedQueries).toList(growable: false);
-    final evicted = index.skip(maxCachedQueries).toList(growable: false);
+    final kept = <Map<String, dynamic>>[];
+    final evicted = <Map<String, dynamic>>[];
+    for (final entry in index) {
+      final entryKey = _readString(entry['key']);
+      // The Home collection is the primary cache and is never evicted by
+      // category or search traffic.
+      final isProtected = entryKey == _allProductsKey;
+      if (isProtected || kept.length < maxCachedQueries) {
+        kept.add(entry);
+      } else {
+        evicted.add(entry);
+      }
+    }
 
     await _storage.write<String>(_indexKey, jsonEncode(kept));
 

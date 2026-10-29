@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../domain/entities/product.dart';
+import '../../domain/entities/product_list_source.dart';
 import '../../domain/entities/product_page.dart';
 import '../../domain/entities/product_query.dart';
 import '../../domain/failures/product_failure.dart';
 import '../../domain/usecases/get_cached_products_use_case.dart';
+import '../../domain/usecases/get_category_products_use_case.dart';
 import '../../domain/usecases/get_products_use_case.dart';
 import '../../domain/usecases/search_products_use_case.dart';
 import 'product_list_state.dart';
@@ -18,11 +20,14 @@ class ProductListCubit extends Cubit<ProductListState> {
     required GetProductsUseCase getProducts,
     required SearchProductsUseCase searchProducts,
     required GetCachedProductsUseCase getCachedProducts,
+    GetCategoryProductsUseCase? getCategoryProducts,
     this.pageSize = defaultPageSize,
     Duration searchDebounce = const Duration(milliseconds: 500),
+    this.source = const ProductListSource.catalogue(),
   }) : _getProducts = getProducts,
        _searchProducts = searchProducts,
        _getCachedProducts = getCachedProducts,
+       _getCategoryProducts = getCategoryProducts,
        _searchDebounce = searchDebounce,
        super(const ProductListInitial());
 
@@ -31,8 +36,10 @@ class ProductListCubit extends Cubit<ProductListState> {
   final GetProductsUseCase _getProducts;
   final SearchProductsUseCase _searchProducts;
   final GetCachedProductsUseCase _getCachedProducts;
+  final GetCategoryProductsUseCase? _getCategoryProducts;
   final int pageSize;
   final Duration _searchDebounce;
+  final ProductListSource source;
 
   String _activeQuery = '';
   Timer? _debounce;
@@ -49,6 +56,9 @@ class ProductListCubit extends Cubit<ProductListState> {
 
   /// Debounces typing and starts a new search once the user pauses.
   void search(String value) {
+    if (source.isCategory) {
+      return;
+    }
     final normalized = normalizeProductQuery(value);
     _debounce?.cancel();
     _debounce = null;
@@ -70,6 +80,9 @@ class ProductListCubit extends Cubit<ProductListState> {
 
   /// Submits the current field value immediately, bypassing the debounce.
   void submitSearch(String value) {
+    if (source.isCategory) {
+      return;
+    }
     _debounce?.cancel();
     _debounce = null;
 
@@ -85,6 +98,9 @@ class ProductListCubit extends Cubit<ProductListState> {
 
   /// Restores the normal catalogue immediately.
   void clearSearch() {
+    if (source.isCategory) {
+      return;
+    }
     _debounce?.cancel();
     _debounce = null;
 
@@ -248,7 +264,7 @@ class ProductListCubit extends Cubit<ProductListState> {
     final generation = ++_generation;
     _firstPageInFlight = true;
 
-    final cached = await _readCache(normalized);
+    final cached = await _readCache(_cacheQuery(normalized));
     if (!_isCurrent(generation)) {
       return;
     }
@@ -379,10 +395,26 @@ class ProductListCubit extends Cubit<ProductListState> {
     );
   }
 
-  Future<ProductPage> _fetchPage({required String query, required int skip}) {
+  Future<ProductPage> _fetchPage({
+    required String query,
+    required int skip,
+  }) async {
+    final slug = source.categorySlug;
+    if (slug != null) {
+      final useCase = _getCategoryProducts;
+      if (useCase == null) {
+        throw const ProductUnexpectedFailure();
+      }
+      return useCase(slug: slug, skip: skip, limit: pageSize);
+    }
+
     return query.isEmpty
         ? _getProducts(skip: skip, limit: pageSize)
         : _searchProducts(query: query, skip: skip, limit: pageSize);
+  }
+
+  String _cacheQuery(String query) {
+    return source.isCategory ? source.cacheKey : normalizeProductQuery(query);
   }
 
   Future<ProductPage?> _readCache(String query) async {

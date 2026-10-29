@@ -3,7 +3,8 @@
 A responsive Flutter storefront for mobile, tablet, and desktop. The app starts
 on a real login screen, restores saved sessions, opens a protected four-tab
 shell, and loads the DummyJSON product catalogue with search, pagination,
-cache-first rendering, and offline-aware errors.
+categories, cache-first product details, and offline-aware errors. A shared
+local cart with a dummy checkout completes the shopping flow.
 
 ## Requirements
 
@@ -85,11 +86,14 @@ API; the first protected request refreshes it if needed.
 
 ## Product catalogue
 
-Home uses the protected Dio client for both endpoints:
+Home and category browsing use the protected Dio client:
 
 ```text
 GET /products?limit=10&skip=<loaded>
 GET /products/search?q=<query>&limit=10&skip=<loaded>
+GET /products/categories
+GET /products/category/{slug}?limit=10&skip=<loaded>
+GET /products/{id}
 ```
 
 - Page size is 10. The next `skip` is the number of loaded products; pages are
@@ -120,12 +124,14 @@ mini_store.products.v1.meta.<query>        # total, limit, updatedAt, ordered id
 mini_store.products.v1.item.<productId>    # one JSON product
 ```
 
-The normal catalogue uses `__all__` as its meta key. Up to ten query caches are
-kept; evicting one removes its metadata and any product entries no longer
-referenced by another query. Cached products render immediately and are refreshed
-in the background without a hard TTL. On a failed refresh the cache is preserved
-and an inline notice explains what is being shown. The product cache survives
-logout; only the authentication session is cleared.
+The normal catalogue uses `__all__` as its meta key. Up to twenty query caches
+are kept, including one `category:<slug>` namespace per category; evicting one
+removes its metadata and any product entries no longer referenced by another
+query. `__all__` is protected from category and search traffic. Cached products
+render immediately and are refreshed in the background without a hard TTL. On a
+failed refresh the cache is preserved and an inline notice explains what is
+being shown. The product cache survives logout; only the authentication session
+is cleared.
 
 ### Error states
 
@@ -138,6 +144,87 @@ logout; only the authentication session is cleared.
 | Empty search | `No products found` and Clear search |
 | Next page failed | Inline footer error with Try again; existing products stay |
 | Expired session | Session message, no offline copy |
+
+## Categories
+
+The Categories tab loads the plain category list once, shows saved categories
+immediately, and refreshes in the background. The list is stored under
+`mini_store.categories.v1` as a small JSON array. Pull-to-refresh, Retry, and an
+offline notice reuse the same cache-first policy as the catalogue.
+
+Category cards use the first product image of each category as a preview
+background. Once the list is visible, missing previews are fetched in the
+background with four concurrent requests (`GET /products/category/{slug}` with
+`limit=1`, preferring `thumbnail` and falling back to the first gallery image).
+Resolved URLs are stored under `mini_store.category_images.v1`; the bytes
+themselves stay in the shared network image disk cache, so later launches paint
+the grid without extra requests. Preview failures never block the list and
+simply leave the category icon fallback in place.
+
+Selecting a category pushes `/categories/:slug` with the display name as a query
+parameter. The screen reuses `ProductListCubit` in category mode, so it shares
+the Home grid, pagination footer, pull-to-refresh, retry, and notice widgets:
+
+- Requests use the API slug, never the display name.
+- Each category has its own cache key, so browsing Beauty can never show saved
+  Home Decoration products.
+- Next-page failures keep the loaded products on screen and offer Try again.
+- Opening a product from the category grid pushes the same product-details route
+  used by Home.
+
+## Product details
+
+Details are cache-first per product id under
+`mini_store.product_detail.v1.<id>`. When a full detail entry is missing, the
+cached list item in `mini_store.products.v1.item.<id>` is used for an immediate
+first paint. The cached product renders while a background refresh runs, and a
+failed refresh keeps the cached content with a subtle Retry notice. A first
+visit without cache shows a loader, then an offline or retryable error state.
+
+The gallery is a swipeable carousel with page dots, a stable aspect ratio,
+placeholders for loading or broken images, and a Hero transition for the first
+image. Detail caching stores the same fields the screen renders, including the
+name, rating, reviews, and comments, without writing one oversized JSON value.
+Duplicate loads, stale responses, and emissions after the cubit closes are
+ignored or suppressed.
+
+The bottom action bar persists every quantity change before reporting success:
+
+- Add to cart is disabled while a write is in flight.
+- A successful add changes the bar to `−` / quantity / `+` plus Go to cart.
+- An existing cart line opens directly with its stored quantity.
+- Go to cart selects the existing Cart tab instead of pushing a second shell.
+- A storage failure keeps the previous cart and shows the error; no success is
+  faked.
+
+## Cart and local checkout
+
+`CartCubit` is a single shared cubit registered in the service locator and
+provided above the shell. The screen and cubit never touch `SharedPreferences`
+directly; the repository writes the cart under `mini_store.cart.v1` and the cubit
+persists each change before emitting new state.
+
+- Cart lines store product id, title, unit price, thumbnail, and quantity.
+- Duplicate ids are merged on restore; increment, decrement, and remove-at-zero
+  keep one line per product.
+- Totals are derived from quantity and unit price, including the navigation
+  badge, which updates only after a successful write.
+- The restored cart survives an app restart and a logout; only auth is cleared.
+- Quantity changes apply immediately without confirmation dialogs.
+
+Place order is blocked for an empty cart. Confirmation shows the unit count and
+total, then simulates roughly 1.2 seconds of local processing. A dismissible
+dialog can cancel without changing the cart. On success the app:
+
+1. generates a readable order number such as `MS-20481`, never a hardcoded one;
+2. snapshots the confirmed item count and total;
+3. persists an empty cart and updates the badge;
+4. opens the order-success screen.
+
+Duplicate submissions are blocked, and a cart persistence failure prevents a
+false success. Continue shopping returns to Home with the cart empty. The session,
+catalogue cache, category cache, and product-detail cache are preserved. There is
+no order API or order history.
 
 ## Debug API logging
 
@@ -171,17 +258,24 @@ A successful call shows the response body instead:
 
 ```text
 ┌─ API REQUEST #2 ──────────────────────────────────────────────────────
-│ GET https://dummyjson.com/products/category-list
+│ GET https://dummyjson.com/products/categories
 └────────────────────────────────────────────────────────────────────────
 ┌─ API RESPONSE #2 · 200 ───────────────────────────────────────────────
-│ GET https://dummyjson.com/products/category-list
+│ GET https://dummyjson.com/products/categories
 │ Time: 142 ms
 │
 │ Response body
 │ [
-│   "beauty",
-│   "fragrances",
-│   "furniture"
+│   {
+│     "slug": "beauty",
+│     "name": "Beauty",
+│     "url": "https://dummyjson.com/products/category/beauty"
+│   },
+│   {
+│     "slug": "fragrances",
+│     "name": "Fragrances",
+│     "url": "https://dummyjson.com/products/category/fragrances"
+│   }
 │ ]
 └────────────────────────────────────────────────────────────────────────
 ```
@@ -228,15 +322,27 @@ Chrome DevTools, but `flutter run` forwards it to the terminal.
   pull-to-refresh
 - Debounced `/products/search` with stale-response protection, Enter to submit,
   immediate clear, and distinct empty states
+- Category browser with cache-first loading, image-backed cards, and isolated
+  paginated category product lists
+- Cache-first product details with gallery, reviews, Hero transition, and
+  non-blocking background refresh
+- Shared persistent cart with badge, quantity editing, totals, and confirmed
+  remove actions
+- Local dummy checkout with confirmation, processing state, unique order number,
+  and order-success summary
 - Chunked, per-query persistent product cache with cache-first rendering,
   background refresh, and offline notices
 - Responsive 2/3/4/5-column lazy product grid with cached thumbnails
+- Auto-hiding Home and Categories bottom navigation that collapses while
+  scrolling down and returns when scrolling stops
+- Single blue Home app bar with a notifications shortcut and a matching
+  empty-state notifications screen
+- System chrome matched to the app: transparent status bar with readable icons
+  and a light surface system navigation bar on every screen
 - Debug API logs with redacted credentials
 - Preserved responsive storefront, shared `AppScaffold`/`AppAppBar`, bundled
   Poppins, and Material 3 theme
 - DevicePreview and a custom Chrome loading screen
-
-Categories and Cart remain themed placeholders in this phase.
 
 ## Architecture
 
@@ -246,17 +352,17 @@ lib/
 ├── app/
 │   ├── app.dart                     # MaterialApp.router and DevicePreview
 │   ├── startup_error_app.dart
-│   ├── di/injector.dart             # auth, product, cache, and router wiring
-│   ├── router/app_router.dart       # splash/login/protected redirects
+│   ├── di/injector.dart             # auth, catalogue, categories, cart, orders, router
+│   ├── router/app_router.dart       # splash/login/shell/details/category/notifications/success
 │   ├── router/go_router_refresh_stream.dart
-│   └── shell/main_shell.dart        # four-tab NavigationBar
+│   └── shell/main_shell.dart        # shared four-tab NavigationBar
 ├── core/
 │   ├── config/                      # Environment validation
 │   ├── network/                     # Dio transport and debug API logging
 │   ├── storage/                     # shared_preferences wrapper
-│   ├── theme/                       # Colors, spacing, typography, theme
+│   ├── theme/                       # Colors, spacing, typography, theme, system chrome
 │   ├── utils/                       # Responsive metrics and formatters
-│   └── widgets/                     # Scaffold, app bar, brand, state views
+│   └── widgets/                     # Scaffold, app bar, images, auto-hide nav, state views
 └── features/
     ├── auth/
     │   ├── domain/                  # User, tokens, failures, repositories, use cases
@@ -266,9 +372,22 @@ lib/
     ├── products/
     │   ├── domain/                  # Product, pages, failures, repository, use cases
     │   ├── data/                    # Dio remote, chunked cache, models, error mapper
-    │   └── presentation/            # ProductListCubit, Home screen, grid, notices
-    ├── categories/presentation/     # Categories placeholder
-    └── cart/presentation/           # Cart placeholder
+    │   └── presentation/            # ProductListCubit, Home, category listing, grid
+    ├── categories/
+    │   ├── domain/                  # Category entity, repository, use cases
+    │   ├── data/                    # Categories endpoint, JSON cache, model
+    │   └── presentation/            # CategoriesCubit and Categories screen
+    ├── product_details/
+    │   ├── domain/                  # Detail repository contract and use case
+    │   ├── data/                    # Detail endpoint, per-id cache, repository
+    │   └── presentation/            # ProductDetailCubit, carousel, detail screen
+    ├── cart/
+    │   ├── domain/                  # CartItem, repository, storage failure
+    │   ├── data/                    # Persistent cart data source and repository
+    │   └── presentation/            # Shared CartCubit, cart screen, item tile
+    └── orders/
+        ├── domain/                  # Order, number generator, place-order use case
+        └── presentation/            # CheckoutCubit and order-success screen
 ```
 
 The auth feature follows Clean Architecture:
@@ -293,7 +412,25 @@ The products feature follows the same layering:
   response models, a chunked `SharedPreferences` cache, and a Dio error mapper.
 - `ProductListCubit` guards every first-page request with a generation counter
   and drops results after `close()`, so late responses cannot update Home after
-  logout.
+  logout. It also accepts a `ProductListSource`, which is how category listings
+  reuse the same loading, pagination, and refresh logic with an isolated cache
+  namespace.
+
+Categories and product details follow the same feature-first layering. The
+detail cubit reads its per-id cache first, emits cached content with
+`isRefreshing`, then refreshes asynchronously; generation and in-flight guards
+prevent duplicate or post-dispose emissions. Cart and checkout separate domain
+contracts from storage and presentation:
+
+- `CartCubit` is created once by the service locator and provided above the
+  shell, so the badge, Cart tab, and details action bar share one state.
+- Every mutation is serialized and saved before it is emitted; a failed write
+  returns `false` and leaves the previous cart intact.
+- `CheckoutCubit` snapshots the confirmed totals, blocks concurrent submissions,
+  clears the persisted cart, and exposes the completed order only after the clear
+  succeeds. The success screen reads that snapshot rather than the live cart.
+- `MainTabController` lets pushed screens select Home or Cart without stacking a
+  second shell route.
 
 ## Responsive behaviour
 
@@ -306,7 +443,7 @@ The products feature follows the same layering:
 
 Content is capped at 1200 px and centred on large screens. Banner and card
 heights grow with the text scaler for accessibility. The bottom navigation bar
-is used at every width.
+is used at every width and auto-hides while Home or Categories scroll down.
 
 ## Device preview
 
@@ -348,9 +485,23 @@ API. It covers:
 - Home responsive columns, search/clear, offline retry, refresh notices,
   pagination loader/error, refresh action visibility, placeholders, narrow
   text-scale layout, and capped search width
+- category parsing, slug preservation, cache-first loading, isolated category
+  caches, slug-based pagination, next-page retry, and first-page failures
+- detail cache round-trips (including reviews), per-id isolation, first-visit
+  loader/error paths, cached-before-refresh rendering, refresh updates and
+  failures, duplicate-load protection, and post-close emission suppression
+- cart restore, add/increment/decrement/remove, duplicate merging, totals,
+  persistence failures, serialized mutations, and empty-cart clearing
+- checkout empty/cancelled/confirmed flows, cart snapshotting, processing state,
+  unique order numbers, duplicate submissions, storage-failure handling, and
+  Continue shopping reset
+- category screen cards, selection, empty state, and bottom-bar auto-hide on
+  both Home and Categories, including tab switches
+- shared system chrome values, app-bar overlay brightness, and bottom-bar
+  hide/restore timing
 
 Latest verification (Flutter 3.41.7 / Dart 3.11.5): `flutter analyze` reports no
-issues and `flutter test` passes all 144 tests.
+issues and `flutter test` passes all 240 tests.
 
 ## Current scope
 
@@ -358,14 +509,21 @@ Implemented:
 
 - Real authentication, token persistence, and automatic refresh
 - Session restore with a splash screen and protected routing
-- Four-tab shell with a working Account tab
+- Four-tab shell with working Categories, Cart, and Account tabs
 - Paginated product catalogue with infinite scroll, pull-to-refresh, and a
   responsive lazy grid
 - Debounced API search with empty/error states and stale-response protection
+- Cache-first categories and isolated paginated category product lists
+- Cache-first product details with gallery, reviews, Hero transition, and
+  background refresh
+- Shared persistent cart with badge, quantity controls, totals, and storage
+  failure handling
+- Local dummy checkout with confirmation, processing state, order number, and
+  success summary
 - Chunked per-query product cache with cache-first rendering and offline notices
 
 Deliberately excluded:
 
-- Product details, reviews, and category filtering
-- Cart logic, checkout, and payments
+- Real payments, order history, and order APIs
+- Quick add-to-cart actions on product cards
 - New authentication flows, profile editing, and dark theme

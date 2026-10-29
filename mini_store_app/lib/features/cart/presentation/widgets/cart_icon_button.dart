@@ -6,7 +6,11 @@ import '../../../../core/theme/app_colors.dart';
 ///
 /// Cart behaviour is intentionally out of scope for Phase 1.
 class CartIconButton extends StatelessWidget {
-  const CartIconButton({super.key, required this.onPressed, this.badgeCount = 0});
+  const CartIconButton({
+    super.key,
+    required this.onPressed,
+    this.badgeCount = 0,
+  });
 
   final VoidCallback onPressed;
   final int badgeCount;
