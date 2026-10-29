@@ -12,6 +12,10 @@ The application supports product discovery, search, category browsing, product d
 ## ✨ Features
 
 ### 🔐 Authentication
+
+Credentials
+Test user: username: emilys password: emilyspass
+
 - Login using the DummyJSON authentication API.
 - Field validation and API error handling.
 - Persistent login sessions and automatic session restoration.
