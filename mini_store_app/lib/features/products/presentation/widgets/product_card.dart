@@ -1,18 +1,29 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_palette.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
 import '../../../../core/widgets/app_network_image.dart';
+import '../../../wishlist/presentation/widgets/wishlist_heart.dart';
 import '../../domain/entities/product.dart';
 import '../utils/product_category_label.dart';
+import '../utils/product_image_hero.dart';
 
 /// Compact product tile used by the responsive grid.
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.onTap});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onTap,
+    this.imageCacheWidth,
+  });
 
   final Product product;
   final VoidCallback onTap;
+
+  /// Decode width for the thumbnail, derived from the grid cell width.
+  final int? imageCacheWidth;
 
   @override
   Widget build(BuildContext context) {
@@ -32,12 +43,15 @@ class ProductCard extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   ColoredBox(
-                    color: AppColors.imageBackground,
+                    color: context.palette.imageBackground,
                     child: Padding(
                       padding: const EdgeInsets.all(12),
-                      child: AppNetworkImage(
-                        imageUrl: product.imageUrl,
-                        semanticLabel: product.title,
+                      child: _hero(
+                        AppNetworkImage(
+                          imageUrl: product.imageUrl,
+                          semanticLabel: product.title,
+                          memCacheWidth: imageCacheWidth,
+                        ),
                       ),
                     ),
                   ),
@@ -49,6 +63,11 @@ class ProductCard extends StatelessWidget {
                         label: formatDiscount(product.discountPercentage),
                       ),
                     ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: WishlistHeart(product: product, compact: true),
+                  ),
                 ],
               ),
             ),
@@ -62,7 +81,9 @@ class ProductCard extends StatelessWidget {
                     meta,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTypography.productMeta,
+                    style: AppTypography.productMeta.copyWith(
+                      color: context.palette.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 3),
                   Text(
@@ -85,7 +106,9 @@ class ProductCard extends StatelessWidget {
                       const SizedBox(width: 2),
                       Text(
                         formatRating(product.rating),
-                        style: AppTypography.rating,
+                        style: AppTypography.rating.copyWith(
+                          color: context.palette.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -96,6 +119,15 @@ class ProductCard extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  /// An empty thumbnail has no destination in the detail gallery, so it must
+  /// not participate in the Hero flight.
+  Widget _hero(Widget child) {
+    if (product.imageUrl.trim().isEmpty) {
+      return child;
+    }
+    return Hero(tag: productImageHeroTag(product.id), child: child);
   }
 }
 
@@ -112,7 +144,10 @@ class _DiscountBadge extends StatelessWidget {
         color: AppColors.accent,
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(label, style: AppTypography.badge),
+      child: Text(
+        label,
+        style: AppTypography.badge.copyWith(color: AppColors.textPrimary),
+      ),
     );
   }
 }
